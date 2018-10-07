@@ -13,21 +13,19 @@ type Instruction        = Assembly RegisterNum RegisterNum Word32
 
 type Memory             =  (V.Vector Word32)
 
-data Register           = Register { 
-                            regVal  :: Word32
-                        }
+type Register           = Word32
 
 data RegisterNum        = R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 deriving Enum
 
 data Registers          = Registers {
-                            r1 :: Register,
-                            r2 :: Register,
-                            r3 :: Register, 
-                            r4 :: Register, 
-                            r5 :: Register,
-                            r6 :: Register,
-                            r7 :: Register,
-                            r8 :: Register
+                            r1 :: Word32,
+                            r2 :: Word32,
+                            r3 :: Word32, 
+                            r4 :: Word32, 
+                            r5 :: Word32,
+                            r6 :: Word32,
+                            r7 :: Word32,
+                            r8 :: Word32
                         }
 
 data Assembly dest source immediate
@@ -46,6 +44,7 @@ data CPU                = CPU {
                             memory          :: Memory,
                             registers       :: Registers,
                             pc              :: Word32,
+                            npc             :: Word32,
                             executionUnit   :: ExecutionUnit
                         }
 
@@ -100,20 +99,25 @@ decodeInstructionJ encodedInstruct opcode cpu =
         address = shiftR (shiftL encodedInstruct 6) 6
     in  J address
 
--- execInstruction :: CPU -> Instruction -> CPU
--- execInstruction cpu (ADD dest source_a source_b)     
---     = let val = sum $ map (readRegister $ registers cpu) [source_a, source_b] 
---       in  cpu { registers = InstructionResult 
--- execInstruction cpu (ADDI dest source i)  
---     = let [dest_reg, source_reg] = map (readRegister $ registers cpu) [dest, source] 
---       in  InstructionResult (ADDI dest source i, i + source_reg)
--- execInstruction cpu (BEQ source_a source_b i)     
---     = let [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
---       in case () of 
---                 _ | a == b        -> InstructionResult (BEQ source_a source_b i, 1)
---                 _                 -> InstructionResult (BEQ source_a source_b i, 0)
--- execInstruction cpu (LW dest source i)   
---     = InstructionResult (LW dest source i, (memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source)))
+execInstruction :: CPU -> Instruction -> CPU
+execInstruction cpu (ADD dest source_a source_b)     
+    = let regs = registers cpu
+          val  = sum $ map (readRegister regs) [source_a, source_b] 
+      in  cpu { registers = writeRegister regs dest val } 
+execInstruction cpu (ADDI dest source i)  
+    = let regs = registers cpu
+          [dest_reg, source_reg] = map (readRegister regs) [dest, source] 
+          val = i + source_reg
+      in  cpu { registers = writeRegister regs dest val } 
+execInstruction cpu (BEQ source_a source_b i)     
+    = let regs = registers cpu
+          [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
+      in case () of 
+                _ | a == b        -> cpu { pc = (npc cpu), npc = (npc cpu) + shiftL i 2}
+                _                 -> cpu
+execInstruction cpu (LW dest source i)   
+    = let loadedWord = (memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
+      in  cpu {  registers = writeRegister (registers cpu) dest loadedWord} 
 -- execInstruction cpu (J i) 
 --     = InstructionResult (J i, cpu {pc = i})
 
@@ -135,14 +139,14 @@ writeRegister registers regNum writeVal
 
 readRegister :: Registers -> RegisterNum -> Word32
 readRegister registers regNum 
-    = case regNum of R1 -> regVal $ r1 registers 
-                     R2 -> regVal $ r2 registers
-                     R3 -> regVal $ r3 registers
-                     R4 -> regVal $ r4 registers
-                     R5 -> regVal $ r5 registers
-                     R6 -> regVal $ r6 registers
-                     R7 -> regVal $ r7 registers
-                     R8 -> regVal $ r8 registers
+    = case regNum of R1 -> r1 registers 
+                     R2 -> r2 registers
+                     R3 -> r3 registers
+                     R4 -> r4 registers
+                     R5 -> r5 registers
+                     R6 -> r6 registers
+                     R7 -> r7 registers
+                     R8 -> r8 registers
 
 toRegisterNum :: Word32 -> RegisterNum
 toRegisterNum regNum 

@@ -32,8 +32,6 @@ data Assembly dest source immediate
                         | ADDI dest source immediate
                         | BEQ  dest source source 
                         | LW   dest source immediate
-                        | LI   dest immediate 
-                        | B    immediate 
                         | J    immediate
                         | BLTH dest source immediate
 
@@ -62,8 +60,10 @@ fetchInstruction cpu = (cpu, (memory cpu V.! pc cpu))
 decodeInstruction :: Word32 -> Word32
 decodeInstruction encodedInstruct 
     = let opcode = shiftR encodedInstruct 24 
-      in  case opcode of    0 -> 0 -- ADD
-                            8 -> 8 -- ADDI
+      in  case opcode of    0  -> 0 -- ADD
+                            8  -> 8 -- ADDI
+                            4  -> 4 -- BEQ
+                            35 -> 35 -- LW
 
 
 execInstruction :: CPU -> Instruction -> InstructionResult
@@ -77,11 +77,8 @@ execInstruction cpu (BEQ dest source_a source_b)
       in case () of 
                 _ | a == b        -> InstructionResult (BEQ dest source_a source_b, 1)
                 _                 -> InstructionResult (BEQ dest source_a source_b, 0)
-
 execInstruction cpu (LW dest source i)   
     = InstructionResult (LW dest source i, (memory cpu) V.! (fromIntegral $ regVal source))
-execInstruction cpu (LI dest i)   
-    = InstructionResult (LI dest i, (memory cpu) V.! (fromIntegral $ i))
 
 
 

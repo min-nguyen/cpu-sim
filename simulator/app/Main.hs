@@ -57,7 +57,7 @@ updateCPU :: CPU -> CPU
 updateCPU cpu = 
     let encodedInstruct = fetchInstruction cpu         
         decodedInstruct = decodeInstruction encodedInstruct
-        -- need to pipeline
+        -- cpu'            = execInstruction
     in  cpu
 
 fetchInstruction :: CPU -> Word32
@@ -100,26 +100,38 @@ decodeInstructionJ encodedInstruct opcode cpu =
         address = shiftR (shiftL encodedInstruct 6) 6
     in  J address
 
-execInstruction :: CPU -> Instruction -> InstructionResult
-execInstruction cpu (ADD dest source_a source_b)     
-    = let reg = map (readRegister $ registers cpu) [source_a, source_b] 
-      in  InstructionResult (ADD dest source_a source_b, sum $ reg)
-execInstruction cpu (ADDI dest source i)  
-    = let [dest_reg, source_reg] = map (readRegister $ registers cpu) [dest, source] 
-      in  InstructionResult (ADDI dest source i, i + source_reg)
-execInstruction cpu (BEQ source_a source_b i)     
-    = let [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
-      in case () of 
-                _ | a == b        -> InstructionResult (BEQ source_a source_b i, 1)
-                _                 -> InstructionResult (BEQ source_a source_b i, 0)
-execInstruction cpu (LW dest source i)   
-    = InstructionResult (LW dest source i, (memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source)))
+-- execInstruction :: CPU -> Instruction -> CPU
+-- execInstruction cpu (ADD dest source_a source_b)     
+--     = let val = sum $ map (readRegister $ registers cpu) [source_a, source_b] 
+--       in  cpu { registers = InstructionResult 
+-- execInstruction cpu (ADDI dest source i)  
+--     = let [dest_reg, source_reg] = map (readRegister $ registers cpu) [dest, source] 
+--       in  InstructionResult (ADDI dest source i, i + source_reg)
+-- execInstruction cpu (BEQ source_a source_b i)     
+--     = let [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
+--       in case () of 
+--                 _ | a == b        -> InstructionResult (BEQ source_a source_b i, 1)
+--                 _                 -> InstructionResult (BEQ source_a source_b i, 0)
+-- execInstruction cpu (LW dest source i)   
+--     = InstructionResult (LW dest source i, (memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source)))
 -- execInstruction cpu (J i) 
 --     = InstructionResult (J i, cpu {pc = i})
 
 
 main :: IO ()
 main = someFunc
+
+
+writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
+writeRegister registers regNum writeVal
+    = case regNum of R1 -> registers { r1 = writeVal } 
+                     R2 -> registers { r2 = writeVal } 
+                     R3 -> registers { r3 = writeVal } 
+                     R4 -> registers { r4 = writeVal } 
+                     R5 -> registers { r5 = writeVal } 
+                     R6 -> registers { r6 = writeVal } 
+                     R7 -> registers { r7 = writeVal } 
+                     R8 -> registers { r8 = writeVal } 
 
 readRegister :: Registers -> RegisterNum -> Word32
 readRegister registers regNum 

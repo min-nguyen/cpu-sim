@@ -55,8 +55,8 @@ data CPU                = CPU {
 data Unit               = Unit { 
                             cycles :: Int,
                             status :: Status,
-                            instruction :: Instruction,
-                            buffer :: Word32
+                            instruction :: Maybe Instruction,
+                            buffer      :: Maybe Word32
                         }
 
 

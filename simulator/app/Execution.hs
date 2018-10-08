@@ -9,8 +9,9 @@ import qualified Data.Vector as V
 
 updateExec :: CPU -> CPU
 updateExec cpu = let executor       = (executionUnit cpu)  
-                     cpu'           = case cycles executor of 
-                                        0 -> execInstruction cpu (instruction (decodeUnit cpu))
+                     decoder        = (decodeUnit cpu)
+                     cpu'           = case (instruction decoder, status decoder) of 
+                                        (Just instrct, Ready) -> execInstruction cpu instrct
                                         _ -> cpu 
                  in  cpu' { executionUnit = tick (executionUnit cpu') (decodeUnit cpu') }
 

@@ -13,10 +13,10 @@ import qualified Data.Vector as V
 
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
-    let cpu1 = updateFetch cpu         
+    let cpu1 = updateExec cpu   
         cpu2 = updateDecode cpu1
-        cpu3 = updateExec cpu2
-    in  cpu3 
+        cpu3 = updateFetch cpu2      
+    in  cpu3
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
 --                 -> (state -> (toSelf, toNext)) -- splitter

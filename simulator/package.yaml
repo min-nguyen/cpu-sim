@@ -26,6 +26,7 @@ dependencies:
 - deepseq
 - data-default
 - template-haskell
+- megaparsec
 
 library:
   source-dirs: src

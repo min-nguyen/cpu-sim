@@ -31,10 +31,16 @@ execInstruction cpu (BEQ source_a source_b i)
       in case () of 
                 _ | a == b        -> cpu { pc = (npc cpu), npc = (npc cpu) + shiftL i 2}
                 _                 -> cpu
-execInstruction cpu (LW dest source i)   
-    = let loadedWord = (memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
+execInstruction cpu (LW dest source _)   
+    = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
       in  cpu {  registers = writeRegister (registers cpu) dest loadedWord} 
 execInstruction cpu (J i) 
     = let pcHi4Bits = (shiftL (shiftR (pc cpu) 28) 28)
           jumpAddress = (shiftL i 2) .&. pcHi4Bits
       in  cpu { pc = npc cpu, npc = jumpAddress}
+execInstruction cpu (SW s i)
+    = let d_memory' = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
+      in cpu { d_memory = d_memory' }
+execInstruction cpu (LI d i)
+    = let regs = registers cpu 
+      in  cpu { registers = writeRegister regs d i }     

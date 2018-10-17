@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 updateFetch :: CPU -> CPU
 updateFetch cpu = 
     let fUnit = case status (decodeUnit cpu) of 
-                Ready ->  (fetchUnit cpu) { buffer = Just (memory cpu V.! (fromIntegral $ pc cpu)),
+                Ready ->  (fetchUnit cpu) { buffer = Just (i_memory cpu V.! (fromIntegral $ pc cpu)),
                                             cycles = 1, status = Stalled }
                          
                 Stalled -> fetchUnit cpu 

@@ -6,6 +6,8 @@ import Data.Bits
 import Utils
 import Execution
 import Decode 
+import System.Environment
+import Assembler
 import Fetch 
 import Control.Applicative
 import qualified Data.Vector as V
@@ -14,9 +16,9 @@ import qualified Data.Vector as V
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
     let cpu1 = updateExec cpu   
-        cpu2 = updateDecode cpu1
-        cpu3 = updateFetch cpu2      
-    in  cpu3
+        -- cpu2 = updateDecode cpu1
+        cpu2 = updateFetch cpu1      
+    in  cpu2
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
 --                 -> (state -> (toSelf, toNext)) -- splitter
@@ -30,4 +32,10 @@ updateCPU cpu =
         -- newState        = 
 
 main :: IO ()
-main = someFunc
+main = do 
+    filename <- getArgs
+    print filename
+    instructions <- parseFile (head filename)
+    print instructions
+    let cpu = initCPU instructions 
+    print cpu

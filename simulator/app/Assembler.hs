@@ -9,11 +9,10 @@ import Utils
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Expr
-import Text.Megaparsec.Char.Lexer
-import Control.Applicative
+import Text.Megaparsec.Char.Lexer hiding (space)
+import Control.Applicative hiding (many)
 import qualified Data.Vector as V
-
-
+import Debug.Trace
 
 -- data AssemblyExpr' dest source immediate
 --                         = ADD  dest source source
@@ -27,43 +26,49 @@ import qualified Data.Vector as V
 
 type Parser = Parsec Void String
 
+
+
 parseWord32 :: Parser Word32
-parseWord32 = fromIntegral <$> decimal
+parseWord32 = (fromIntegral <$> decimal) 
 
 parseRegister :: Parser RegisterNum
 parseRegister = 
-    try (R0 <$ string "R0") <|>
-    try (R1 <$ string "R1") <|>
-    try (R2 <$ string "R2") <|>
+    try (trace "R0" $ R0 <$ string "R0") <|>
+    try (trace "R1" $ R1 <$ string "R1") <|>
+    try (trace "R2" $ R2 <$ string "R2") <|>
     try (R3 <$ string "R3") <|>
     try (R4 <$ string "R4") <|>
     try (R5 <$ string "R5") <|>
     try (R6 <$ string "R6") <|>
-    try (R7 <$ string "R7") <|>
-    try (R8 <$ string "R8") 
+    try (R7 <$ string "R7")
 
+parseSW :: Parser Instruction 
+parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseWord32
+
+parseLI :: Parser Instruction
+parseLI = trace "here" $ LI <$ string "LI" <* space <*> parseRegister <* space <*> parseWord32
 
 parseADD :: Parser Instruction
-parseADD = ADD <$ string "ADD" <*> parseRegister <*> parseRegister <*> parseRegister
+parseADD = ADD <$ string "ADD" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 
 parseADDI :: Parser Instruction
-parseADDI = ADDI <$ string "ADDI" <*> parseRegister <*> parseRegister <*> parseWord32
+parseADDI = ADDI <$ string "ADDI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseBEQ :: Parser Instruction
-parseBEQ = BEQ <$ string "BEQ" <*> parseRegister <*> parseRegister <*> parseWord32
+parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseLW :: Parser Instruction
-parseLW = LW <$ string "LW" <*> parseRegister <*> parseRegister <*> parseWord32
+parseLW = LW <$ string "LW" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseJ :: Parser Instruction
-parseJ = J <$ string "J" <*> parseWord32
+parseJ = J <$ string "J" <* space <*> parseWord32
 
 parseBLTZ :: Parser Instruction
-parseBLTZ = BLTZ <$ string "BLTZ" <*> parseRegister <*> parseRegister <*> parseWord32
+parseBLTZ = BLTZ <$ string "BLTZ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseInstruction :: Parser Instruction
-parseInstruction =  try parseADD <|> try parseADDI <|> try parseBEQ <|> 
-                    try parseBLTZ <|> try parseJ <|> try parseLW
+parseInstruction =  try parseLW <|> try parseLI <|> try parseSW <|> try parseADD <|> try parseADDI <|> try parseBEQ <|> 
+                    try parseBLTZ <|> try parseJ
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof
@@ -71,6 +76,7 @@ parseAssembly = sepEndBy1 parseInstruction eol <* eof
 parseFile :: String -> IO [Instruction]
 parseFile file = do 
     program <- readFile file 
+    print program
     case parse parseAssembly "" program of 
         Left e -> print e >> fail "parse error"
         Right r -> return r

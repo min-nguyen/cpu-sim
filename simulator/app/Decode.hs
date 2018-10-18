@@ -14,7 +14,7 @@ updateDecode cpu =
         decoder = decodeUnit cpu
         executor = executionUnit cpu 
         decoder' = tick decoder { instruction = maybeInstruction} executor 
-    in   cpu { decodeUnit = decoder' }
+    in  cpu { decodeUnit = decoder' }
 -- updateDecode :: CPU -> CPU 
 -- updateDecode cpu
 --     = let decoder  = decodeUnit cpu

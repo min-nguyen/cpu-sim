@@ -22,10 +22,10 @@ updateFetch :: CPU -> CPU
 updateFetch cpu = 
     if (fromIntegral $ pc cpu) >= length (i_memory cpu)
     then trace (show $ pc cpu) $ cpu { fetchUnit = tick (fetchUnit cpu) (decodeUnit cpu) } 
-    else
-        let fUnit = case status (decodeUnit cpu) of 
-                    Ready ->  (fetchUnit cpu) { buffer = Just (i_memory cpu V.! (fromIntegral $ pc cpu)),
-                                                cycles = 1, status = Stalled }
+    else case status (decodeUnit cpu) of 
+                    Ready ->    let fUnit = (fetchUnit cpu) { buffer = Just (i_memory cpu V.! (fromIntegral $ pc cpu)), 
+                                                              cycles = 1, status = Stalled }
+                                in cpu { fetchUnit = tick fUnit (decodeUnit cpu), pc = pc cpu + 1 } 
                             
-                    Stalled -> fetchUnit cpu 
-        in  cpu { fetchUnit = tick fUnit (decodeUnit cpu) } 
+                    Stalled -> cpu { fetchUnit = tick (fetchUnit cpu) (decodeUnit cpu) } 
+

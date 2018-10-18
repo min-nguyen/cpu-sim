@@ -16,9 +16,11 @@ import qualified Data.Vector as V
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
     let cpu1 = updateExec cpu   
-        -- cpu2 = updateDecode cpu1
-        cpu2 = updateFetch cpu1      
-    in  cpu2
+        cpu2 = updateDecode cpu1
+        cpu3 = updateFetch cpu2    
+      
+
+    in  cpu3
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
 --                 -> (state -> (toSelf, toNext)) -- splitter
@@ -38,4 +40,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    print cpu
+    let cpu' = foldr (\x a -> x a) cpu (replicate 20 updateCPU) 
+    print cpu'

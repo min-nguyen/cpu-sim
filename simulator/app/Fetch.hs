@@ -25,7 +25,7 @@ updateFetch cpu =
     else case status (decodeUnit cpu) of 
                     Ready ->    let fUnit = (fetchUnit cpu) { buffer = Just (i_memory cpu V.! (fromIntegral $ pc cpu)), 
                                                               cycles = 1, status = Stalled }
-                                in cpu { fetchUnit = tick fUnit (decodeUnit cpu), pc = pc cpu + 1 } 
+                                in cpu { fetchUnit = tick fUnit (decodeUnit cpu), pc = npc cpu, npc = npc cpu + 1 } 
                             
                     Stalled -> cpu { fetchUnit = tick (fetchUnit cpu) (decodeUnit cpu) } 
 

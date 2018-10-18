@@ -1,5 +1,6 @@
 LI R0 5
 LI R1 3
+J 5
 LI R2 0
 LI R3 1
 SW R0 0

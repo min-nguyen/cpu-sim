@@ -120,3 +120,7 @@ tick :: Unit -> Unit -> Unit
 tick unit nextUnit = unit {cycles = nextCycle, status = nextStatus} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
     nextStatus = status nextUnit
+
+flushPipeline :: CPU -> CPU  
+flushPipeline cpu = cpu { decodeUnit = initUnit, fetchUnit = initUnit, executionUnit = initUnit }
+                       

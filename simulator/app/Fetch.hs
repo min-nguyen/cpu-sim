@@ -25,7 +25,9 @@ updateFetch cpu =
     else case status (decodeUnit cpu) of 
                     Ready ->    let fUnit = (fetchUnit cpu) { buffer = Just (i_memory cpu V.! (fromIntegral $ pc cpu)), 
                                                               cycles = 1, status = Stalled }
-                                in cpu { fetchUnit = tick fUnit (decodeUnit cpu), pc = npc cpu, npc = npc cpu + 1 } 
+                                    idOrFlush = if npc cpu == pc cpu + 1 then id else flushPipeline
+
+                                in  idOrFlush $ cpu { fetchUnit = tick fUnit (decodeUnit cpu), pc = npc cpu, npc = npc cpu + 1 } 
                             
                     Stalled -> cpu { fetchUnit = tick (fetchUnit cpu) (decodeUnit cpu) } 
 

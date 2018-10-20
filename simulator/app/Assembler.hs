@@ -33,9 +33,9 @@ parseWord32 = (fromIntegral <$> decimal)
 
 parseRegister :: Parser RegisterNum
 parseRegister = 
-    try (trace "R0" $ R0 <$ string "R0") <|>
-    try (trace "R1" $ R1 <$ string "R1") <|>
-    try (trace "R2" $ R2 <$ string "R2") <|>
+    try (R0 <$ string "R0") <|>
+    try (R1 <$ string "R1") <|>
+    try (R2 <$ string "R2") <|>
     try (R3 <$ string "R3") <|>
     try (R4 <$ string "R4") <|>
     try (R5 <$ string "R5") <|>
@@ -60,15 +60,15 @@ parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegi
 parseLW :: Parser Instruction
 parseLW = LW <$ string "LW" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
-parseJ :: Parser Instruction
-parseJ = J <$ string "J" <* space <*> parseWord32
+parseJALR :: Parser Instruction
+parseJALR = JALR <$ string "JALR" <*> parseRegister <* space <*> parseRegister
 
 parseBLTZ :: Parser Instruction
 parseBLTZ = BLTZ <$ string "BLTZ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseInstruction :: Parser Instruction
 parseInstruction =  try parseLW <|> try parseLI <|> try parseSW <|> try parseADD <|> try parseADDI <|> try parseBEQ <|> 
-                    try parseBLTZ <|> try parseJ
+                    try parseBLTZ <|> try parseJALR
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof

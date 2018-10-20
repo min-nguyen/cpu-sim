@@ -14,6 +14,7 @@ updateExec cpu = let executor       = (executionUnit cpu)
                                         (Just instrct, Ready) -> execInstruction cpu instrct
                                         _ -> cpu 
                  in  cpu' { executionUnit = tick (executionUnit cpu') (decodeUnit cpu') }
+
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     
     = let regs = registers cpu
@@ -33,8 +34,10 @@ execInstruction cpu (BEQ source_a source_b i)
 execInstruction cpu (LW dest source _)   
     = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
       in  cpu {  registers = writeRegister (registers cpu) dest loadedWord} 
-execInstruction cpu (J i) 
-    = cpu { npc = i }
+execInstruction cpu (JALR dest source) 
+    = let regs = registers cpu
+          regs' = writeRegister regs dest (pc cpu + 1)
+      in  cpu { npc = readRegister regs' source }
 execInstruction cpu (SW s i)
     = let d_memory' = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
       in  cpu { d_memory = d_memory' }

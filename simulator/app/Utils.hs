@@ -11,7 +11,7 @@ type Address            = Word32
 
 type Instruction        = Assembly RegisterNum RegisterNum Word32
 
-type Memory             =  (V.Vector Word32)
+type Memory             = V.Vector Word32
 type IMemory            = V.Vector Instruction
 type Register           = Word32
 
@@ -37,7 +37,7 @@ data Assembly dest source immediate
                         | LW   source source immediate
                         | LI   dest   immediate
                         | SW   source immediate
-                        | J    immediate
+                        | JALR dest source
                         | BLTZ dest source immediate
                         deriving Show
 
@@ -69,7 +69,6 @@ initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fr
 
 initUnit :: Unit 
 initUnit = Unit 0 Ready Nothing Nothing
-
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
@@ -114,7 +113,6 @@ toRegisterNum regNum
                         6 -> R6
                         7 -> R7
                         0 -> R0 
-
 
 tick :: Unit -> Unit -> Unit 
 tick unit nextUnit = unit {cycles = nextCycle, status = nextStatus} where

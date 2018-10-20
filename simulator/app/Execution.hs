@@ -8,12 +8,52 @@ import Control.Applicative
 import qualified Data.Vector as V
 
 updateExec :: CPU -> CPU
-updateExec cpu = let executor       = (executionUnit cpu)  
-                     decoder        = (decodeUnit cpu)
-                     cpu'           = case (instruction decoder, status decoder) of 
-                                        (Just instrct, Ready) -> execInstruction cpu instrct
-                                        _ -> cpu 
-                 in  cpu' { executionUnit = tick (executionUnit cpu') (decodeUnit cpu') }
+updateExec cpu = let decoder        = (decodeUnit cpu)
+                    --  executor'      = case (instruction executor) of 
+                    --                        Just instrct -> executor 
+                    --                        Nothing      -> executor {instruction = instruction decoder}
+                   
+                     cpu'           = case (instruction decoder) of 
+                                        Just instrct -> let foo unit = case instruction unit of 
+                                                                                            Nothing         -> (unit { instruction = Just instrct }, decoder {instruction = Nothing})
+                                                                                            Just instrct'   -> (unit, decoder)
+                                            
+                                                        in case instructionToExecutionUnit instrct of 
+                                                                            IntUnit -> case instruction (intUnit1 $ executionUnits cpu) of 
+                                                                                                Just _ ->  let  units = executionUnits cpu
+                                                                                                                unit = intUnit2 units
+                                                                                                                (unit', decoder') = foo unit 
+                                                                                                            in  cpu { executionUnits = units { intUnit2 = unit' }, decodeUnit = decoder'}
+                                                                                                Nothing ->  let units = executionUnits cpu
+                                                                                                                unit = intUnit1 units
+                                                                                                                (unit', decoder') = foo unit 
+                                                                                                            in  cpu { executionUnits = units { intUnit1 = unit' }, decodeUnit = decoder'} 
+
+                                                                            MemUnit ->      let units = executionUnits cpu
+                                                                                                (execunit, decodeunit) = foo (memUnit units) 
+                                                                                            in cpu { executionUnits = units { memUnit = execunit }, decodeUnit = decodeunit } 
+                                                                            BranchUnit ->   let units = executionUnits cpu
+                                                                                                (execunit, decodeunit) = foo (branchUnit units) 
+                                                                                            in cpu { executionUnits = units { branchUnit = execunit}, decodeUnit = decodeunit }
+                                        Nothing -> cpu
+                                            
+                 in  updateExecUnits cpu'
+
+
+updateExecUnits :: CPU -> CPU 
+updateExecUnits cpu = 
+    let Units intunit1 intunit2 memunit branchunit = executionUnits cpu 
+        performExec cpuArg unitArg = case instruction unitArg of
+            Nothing -> (cpuArg, unitArg) 
+            Just instrct -> let cpu' = execInstruction cpuArg instrct
+                                unit' = unitArg { instruction = Nothing }
+                            in  (cpu', tick unit')
+        (cpu1, intunit1') = performExec cpu intunit1  
+        (cpu2, intunit2') = performExec cpu1 intunit2
+        (cpu3, memunit')  = performExec cpu2 memunit 
+        (cpu4, branchunit') = performExec cpu3 branchunit
+
+    in  cpu4 { executionUnits = Units intunit1' intunit2' memunit' branchunit' }
 
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     

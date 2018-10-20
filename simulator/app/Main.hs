@@ -11,15 +11,15 @@ import Assembler
 import Fetch 
 import Control.Applicative
 import qualified Data.Vector as V
-
+import Debug.Trace
 
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
-    let cpu1 = updateExec cpu   
+    let 
+        cpu1 = updateExec cpu  
         cpu2 = updateDecode cpu1
-        cpu3 = updateFetch cpu2    
-      
-
+        cpu3 = updateFetch cpu2
+           
     in  cpu3
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
@@ -40,5 +40,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> x a) cpu (replicate 20 updateCPU) 
+    let cpu' = foldr (\x a -> trace (show (x a) ++ "\n\n") (x a)) cpu (replicate 20 updateCPU) 
     print cpu'

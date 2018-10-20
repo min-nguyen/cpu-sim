@@ -6,15 +6,19 @@ import Data.Bits
 import Utils
 import Control.Applicative
 import qualified Data.Vector as V
-
+import Debug.Trace
 
 updateDecode :: CPU -> CPU 
 updateDecode cpu =
-    let maybeInstruction = buffer (fetchUnit cpu)
+    let 
+        fetcher = fetchUnit cpu
         decoder = decodeUnit cpu
-        executor = executionUnit cpu 
-        decoder' = tick decoder { instruction = maybeInstruction} executor 
-    in  cpu { decodeUnit = decoder' }
+        maybeInstruction =  (instruction fetcher)
+        (fetcher', decoder') = case instruction decoder of 
+            Nothing -> (fetcher { instruction = Nothing }, decoder { instruction = maybeInstruction })
+            Just instrct -> (fetcher , decoder { instruction = maybeInstruction })
+    in  cpu { fetchUnit = fetcher', decodeUnit = tick decoder' } 
+
 -- updateDecode :: CPU -> CPU 
 -- updateDecode cpu
 --     = let decoder  = decodeUnit cpu

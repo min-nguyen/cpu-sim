@@ -17,7 +17,7 @@ type Register           = Word32
 
 data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 deriving (Enum, Show)
 
-data Status             = Ready | Stalled  deriving Show
+-- data Status             = Ready | Stalled  deriving Show
 
 data Registers          = Registers {
                             r0 :: Word32,
@@ -51,35 +51,43 @@ data CPU                = CPU {
                             registers       :: Registers,
                             pc              :: Word32,
                             npc             :: Word32,
-                            executionUnit   :: Unit,
+                            executionUnits  :: Units,
                             fetchUnit       :: Unit,
                             decodeUnit      :: Unit
                         } deriving Show
 
+data UnitType           = IntUnit | MemUnit | BranchUnit
+
 data Unit               = Unit { 
-                            cycles :: Int,
-                            status :: Status,
+                            cycles      :: Int,
                             instruction :: Maybe Instruction,
-                            buffer :: Maybe Instruction
-                            -- buffer      :: Maybe Word32
+                            buffer      :: Maybe Instruction
                         }  deriving Show
+
+data Units              = Units {
+                            intUnit1    :: Unit,
+                            intUnit2    :: Unit,
+                            memUnit     :: Unit,
+                            branchUnit  :: Unit 
+                          } deriving Show
+
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
 initUnit :: Unit 
-initUnit = Unit 0 Ready Nothing Nothing
+initUnit = Unit 0 Nothing Nothing
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
                            d_mem = V.replicate 100 (fromIntegral 0)
                            registers = initRegisters
                            pc = fromIntegral 0
-                           npc = fromIntegral 0
-                           eunit = initUnit
+                           npc = fromIntegral 1
+                           eunits =  Units initUnit initUnit initUnit initUnit
                            funit = initUnit 
                            dunit = initUnit 
-                        in CPU i_mem d_mem registers pc npc eunit funit dunit
+                        in CPU i_mem d_mem registers pc npc eunits funit dunit
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
 writeRegister registers regNum writeVal
@@ -114,11 +122,20 @@ toRegisterNum regNum
                         7 -> R7
                         0 -> R0 
 
-tick :: Unit -> Unit -> Unit 
-tick unit nextUnit = unit {cycles = nextCycle, status = nextStatus} where
+tick :: Unit -> Unit 
+tick unit = unit {cycles = nextCycle} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
-    nextStatus = status nextUnit
 
 flushPipeline :: CPU -> CPU  
-flushPipeline cpu = cpu { decodeUnit = initUnit, fetchUnit = initUnit, executionUnit = initUnit }
+flushPipeline cpu = cpu { decodeUnit = initUnit, fetchUnit = initUnit, executionUnits = Units initUnit initUnit initUnit initUnit }
                        
+instructionToExecutionUnit :: Instruction -> UnitType
+instructionToExecutionUnit instruction = 
+        case instruction of ADD _ _ _ -> IntUnit
+                            ADDI _ _ _-> IntUnit 
+                            BEQ _ _ _-> BranchUnit
+                            BLTZ _ _ _-> BranchUnit
+                            JALR _ _ -> BranchUnit
+                            LW _ _ _-> MemUnit 
+                            LI _ _ -> MemUnit 
+                            SW _ _ -> MemUnit 

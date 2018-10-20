@@ -46,7 +46,7 @@ parseSW :: Parser Instruction
 parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseWord32
 
 parseLI :: Parser Instruction
-parseLI = trace "here" $ LI <$ string "LI" <* space <*> parseRegister <* space <*> parseWord32
+parseLI = LI <$ string "LI" <* space <*> parseRegister <* space <*> parseWord32
 
 parseADD :: Parser Instruction
 parseADD = ADD <$ string "ADD" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister

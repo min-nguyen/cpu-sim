@@ -13,12 +13,15 @@ updateDecode cpu =
     let 
         fetcher = fetchUnit cpu
         decoder = decodeUnit cpu
-        maybeInstruction =  (instruction fetcher)
-        (fetcher', decoder') = case instruction decoder of 
-            Nothing -> (fetcher { instruction = Nothing }, decoder { instruction = maybeInstruction })
-            Just instrct -> (fetcher , decoder { instruction = maybeInstruction })
+        instrcts =  (buffer fetcher)
+        decodebuff = (buffer decoder) V.++ V.take fetchN (buffer fetcher)
+        fetchbuff = V.drop fetchN (buffer fetcher)
+        (fetcher', decoder') = (fetcher {buffer = fetchbuff} , decoder { buffer = decodebuff })
     in  cpu { fetchUnit = fetcher', decodeUnit = tick decoder' } 
-
+    where   fetchN = if freeBufferSpace > 0 
+                     then freeBufferSpace
+                     else 0
+            freeBufferSpace = 4 - V.length (buffer (decodeUnit cpu))
 -- updateDecode :: CPU -> CPU 
 -- updateDecode cpu
 --     = let decoder  = decodeUnit cpu

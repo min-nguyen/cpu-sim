@@ -20,15 +20,21 @@ import Debug.Trace
 
 updateFetch :: CPU -> CPU
 updateFetch cpu = 
-        if (fromIntegral $ pc cpu) >= length (i_memory cpu)
-        then cpu { fetchUnit = tick (fetchUnit cpu) } 
-        else case (instruction (fetchUnit cpu)) of 
-                        (Nothing)  -> trace "Fetching new instruction" $   
-                                    let fUnit = (fetchUnit cpu) { instruction = Just (i_memory cpu V.! (fromIntegral $ pc cpu)), 
-                                                                cycles = 1 }
-                                        idOrFlush = if npc cpu == pc cpu + 1 then id else flushPipeline
+        if fetchN == 0 || freeBufferSpace == 0
+        then trace "FetchUnit buffer full or all instructions fetched " $ cpu { fetchUnit = tick (fetchUnit cpu) } 
+        else trace "Fetching new instruction" $   
+                    let fUnit = (fetchUnit cpu) {   buffer = buff V.++ (V.slice current_pc (current_pc + freeBufferSpace) (i_memory cpu)), 
+                                                    cycles = 1 }
+                        idOrFlush = if npc cpu == pc cpu  then id else flushPipeline
 
-                                    in  idOrFlush $ cpu { fetchUnit = tick fUnit , pc = npc cpu, npc = npc cpu + 1 } 
-                                
-                        (Just instrct) -> trace "FetchUnit buffer full" $ cpu { fetchUnit = tick (fetchUnit cpu)  } 
+                    in  idOrFlush $ cpu { fetchUnit = tick fUnit , 
+                                          pc = (fromIntegral $ current_pc + freeBufferSpace), 
+                                          npc = (fromIntegral $ current_pc + freeBufferSpace) } 
 
+        where fetchN = if freeBufferSpace > endlen && endlen >= 0 
+                       then endlen
+                       else freeBufferSpace
+              freeBufferSpace = 4 - V.length buff
+              endlen = (V.length (i_memory cpu) - current_pc)
+              current_pc = (fromIntegral $ pc cpu)
+              buff = buffer (fetchUnit cpu)

@@ -77,7 +77,7 @@ data UnitType           = IntUnit | MemUnit | BranchUnit
 data Unit               = Unit { 
                             cycles      :: Int,
                             instruction :: Maybe Instruction,
-                            buffer      :: Maybe Instruction
+                            buffer      :: V.Vector Instruction
                         }  
 
 instance Show Unit where 
@@ -137,7 +137,7 @@ initRegisters :: Registers
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
 initUnit :: Unit 
-initUnit = Unit 0 Nothing Nothing
+initUnit = Unit 0 Nothing V.empty
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 

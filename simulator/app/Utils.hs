@@ -28,7 +28,11 @@ data Registers          = Registers {
                             r5 :: Word32,
                             r6 :: Word32,
                             r7 :: Word32
-                        }  deriving Show
+                        }  
+
+instance Show Registers where 
+    show (Registers r0 r1 r2 r3 r4 r5 r6 r7) = 
+        "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++ "]"
 
 data Assembly dest source immediate
                         = ADD  dest source source
@@ -48,13 +52,25 @@ data InstructionResult  = InstructionResult {
 data CPU                = CPU {
                             i_memory        :: IMemory,
                             d_memory        :: Memory,
+                            rs_station      :: ReservationStation,
                             registers       :: Registers,
                             pc              :: Word32,
                             npc             :: Word32,
                             executionUnits  :: Units,
                             fetchUnit       :: Unit,
                             decodeUnit      :: Unit
-                        } deriving Show
+                        } 
+
+instance Show CPU where
+    show (CPU imem dmem rs_station reg pc npc exec fetch decode) = 
+        "InstructionMemory: " ++ show imem ++ "\n" ++
+        "DataMemory: " ++ show dmem ++ "\n" ++
+        "ReservationStation: " ++ show rs_station ++ "\n" ++
+        "Registers: " ++ show reg ++ "\n" ++
+        "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
+        "ExecutionUnits: " ++ show exec ++ 
+        "FetchUnit: " ++ show fetch ++
+        "DecodeUnit: " ++ show decode
 
 data UnitType           = IntUnit | MemUnit | BranchUnit
 
@@ -62,15 +78,60 @@ data Unit               = Unit {
                             cycles      :: Int,
                             instruction :: Maybe Instruction,
                             buffer      :: Maybe Instruction
-                        }  deriving Show
+                        }  
+
+instance Show Unit where 
+    show (Unit cycle instrct buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", Buffer: " ++ show buff ++ "]"
 
 data Units              = Units {
                             intUnit1    :: Unit,
                             intUnit2    :: Unit,
                             memUnit     :: Unit,
                             branchUnit  :: Unit 
-                          } deriving Show
+                          } 
 
+instance Show Units where 
+    show (Units intunit1 intunit2 memunit branchunit) = "IntUnit1 : " ++ show intunit1 ++ " \n" ++ 
+                                                        "IntUnit2: " ++ show intunit2 ++ " \n" ++ 
+                                                        "MemUnit: " ++ show memunit ++ " \n" ++ 
+                                                        "BranchUnit: " ++ show branchunit ++ " \n"
+
+data RSEntry            = RSEntry {
+                            rs_instruction  :: Instruction,
+                            qj              :: Int,
+                            qk              :: Int,
+                            vj              :: Word32,
+                            vk              :: Word32,
+                            addr            :: Address,
+                            busy            :: Bool
+                        } deriving Show
+
+data RegisterStatuses   = RegisterStatuses {
+                            rs_r0 :: Int,
+                            rs_r1 :: Int,
+                            rs_r2 :: Int,
+                            rs_r3 :: Int,
+                            rs_r4 :: Int,
+                            rs_r5 :: Int,
+                            rs_r6 :: Int,
+                            rs_r7 :: Int
+                        } 
+
+instance Show RegisterStatuses where 
+    show (RegisterStatuses r0 r1 r2 r3 r4 r5 r6 r7) =
+        "[R0: " ++ show r0 ++ ", R1: " ++ show r1 ++ ", R2: " ++ show r2 ++ ", R3: " ++ show r3 ++ ", R4: " ++ show r4 ++
+        ", R5: " ++ show r5 ++ ", R6: " ++ show r6 ++ ", R7: " ++ show r7 ++ "]\n"
+
+data ReservationStation = ReservationStation {
+                            rs_entries      :: [RSEntry],
+                            reg_statuses    :: RegisterStatuses
+                        } deriving Show
+
+initRegisterStatuses :: RegisterStatuses
+initRegisterStatuses = RegisterStatuses 0 0 0 0 0 0 0 0
+
+initReservationStation :: ReservationStation
+initReservationStation = ReservationStation [] initRegisterStatuses
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
@@ -80,14 +141,15 @@ initUnit = Unit 0 Nothing Nothing
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
-                           d_mem = V.replicate 100 (fromIntegral 0)
+                           d_mem = V.replicate 30 (fromIntegral 0)
+                           rs_station = initReservationStation
                            registers = initRegisters
                            pc = fromIntegral 0
                            npc = fromIntegral 1
                            eunits =  Units initUnit initUnit initUnit initUnit
                            funit = initUnit 
                            dunit = initUnit 
-                        in CPU i_mem d_mem registers pc npc eunits funit dunit
+                        in CPU  i_mem d_mem rs_station registers pc npc eunits funit dunit
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
 writeRegister registers regNum writeVal

@@ -18,8 +18,7 @@ updateCPU cpu =
     let 
         cpu1 = updateExec cpu  
         cpu2 = updateDecode cpu1
-        cpu3 = updateFetch cpu2
-           
+        cpu3 = updateFetch cpu2    
     in  cpu3
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))

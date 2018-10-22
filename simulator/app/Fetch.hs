@@ -20,7 +20,6 @@ import Debug.Trace
 
 updateFetch :: CPU -> CPU
 updateFetch cpu = 
-    trace ("PC :" ++ show (pc cpu) ++ "\n" ) $ 
         if (fromIntegral $ pc cpu) >= length (i_memory cpu)
         then cpu { fetchUnit = tick (fetchUnit cpu) } 
         else case (instruction (fetchUnit cpu)) of 

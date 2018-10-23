@@ -6,39 +6,52 @@ import Data.Bits
 import Utils
 import Control.Applicative
 import qualified Data.Vector as V
+import Debug.Trace
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
                     --  executor'      = case (instruction executor) of 
                     --                        Just instrct -> executor 
                     --                        Nothing      -> executor {instruction = instruction decoder}
-                   
-                     cpu'           = case (instruction decoder) of 
-                                        Just instrct -> let foo unit = case instruction unit of 
-                                                                                            Nothing         -> (unit { instruction = Just instrct }, decoder {instruction = Nothing})
-                                                                                            Just instrct'   -> (unit, decoder)
-                                            
-                                                        in case instructionToExecutionUnit instrct of 
-                                                                            IntUnit -> case instruction (intUnit1 $ executionUnits cpu) of 
-                                                                                                Just _ ->  let  units = executionUnits cpu
-                                                                                                                unit = intUnit2 units
-                                                                                                                (unit', decoder') = foo unit 
-                                                                                                            in  cpu { executionUnits = units { intUnit2 = unit' }, decodeUnit = decoder'}
-                                                                                                Nothing ->  let units = executionUnits cpu
-                                                                                                                unit = intUnit1 units
-                                                                                                                (unit', decoder') = foo unit 
-                                                                                                            in  cpu { executionUnits = units { intUnit1 = unit' }, decodeUnit = decoder'} 
-
-                                                                            MemUnit ->      let units = executionUnits cpu
-                                                                                                (execunit, decodeunit) = foo (memUnit units) 
-                                                                                            in cpu { executionUnits = units { memUnit = execunit }, decodeUnit = decodeunit } 
-                                                                            BranchUnit ->   let units = executionUnits cpu
-                                                                                                (execunit, decodeunit) = foo (branchUnit units) 
-                                                                                            in cpu { executionUnits = units { branchUnit = execunit}, decodeUnit = decodeunit }
-                                        Nothing -> cpu
-                                            
+                        
+                     cpu'   =  issueAllInstructions cpu                                   
                  in  updateExecUnits cpu'
 
+issueAllInstructions :: CPU -> CPU 
+issueAllInstructions cpu = if not (V.null $ buffer (decodeUnit cpu))
+                           then let (cpu', issueAgain) = issueInstruction cpu in (if issueAgain then issueAllInstructions cpu' else cpu)
+                           else cpu
+
+issueInstruction :: CPU -> (CPU, Bool)
+issueInstruction cpu =  let  decoder        = (decodeUnit cpu)
+
+                             (cpu', issueAgain) 
+                                    = if not (V.null $ buffer decoder)
+                                      then let decoderInstrct = V.head $ buffer decoder
+                                               foo unit =  case instruction unit of 
+                                                                    Nothing         -> Just (unit { instruction = Just (V.head $ buffer decoder) }, decoder { buffer = V.tail (buffer decoder)})
+                                                                    Just instrct'   -> Nothing
+                                                
+                                            in  case instructionToExecutionUnit decoderInstrct of 
+                                                        IntUnit -> case instruction (intUnit1 $ executionUnits cpu) of 
+                                                                            Just _ ->  let  units = executionUnits cpu
+                                                                                            unit = intUnit2 units
+                                                                                       in   case foo unit of Just (unit', decoder') -> (cpu { executionUnits = units { intUnit2 = unit' }, decodeUnit = decoder'}, True )
+                                                                                                             Nothing                -> (cpu, False)
+                                                                            Nothing ->  let units = executionUnits cpu
+                                                                                            unit = intUnit1 units
+                                                                                        in  case foo unit of Just (unit', decoder') -> (cpu { executionUnits = units { intUnit1 = unit' }, decodeUnit = decoder'}, True )
+                                                                                                             Nothing                -> (cpu, False)
+
+                                                        MemUnit ->      let units = executionUnits cpu
+                                                                        in  case foo (memUnit units) of Just (execunit, decodeunit) -> (cpu { executionUnits = units { memUnit = execunit }, decodeUnit = decodeunit },  True)
+                                                                                                        Nothing ->  (cpu, False)
+                                                        BranchUnit ->   let units = executionUnits cpu
+                                                                        in  case foo (branchUnit units) of  Just (execunit, decodeunit) ->  (cpu { executionUnits = units { branchUnit = execunit}, decodeUnit = decodeunit }, True)
+                                                                                                            Nothing -> (cpu, False)
+                                            
+                                    else (cpu, False)
+                        in trace ("ISSUE AGAIN" ++ show  issueAgain ++ show (executionUnits cpu))  $ (cpu', issueAgain)
 
 updateExecUnits :: CPU -> CPU 
 updateExecUnits cpu = 

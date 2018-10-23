@@ -145,7 +145,7 @@ initCPU instructions = let i_mem = V.fromList instructions
                            rs_station = initReservationStation
                            registers = initRegisters
                            pc = fromIntegral 0
-                           npc = fromIntegral 1
+                           npc = fromIntegral 0
                            eunits =  Units initUnit initUnit initUnit initUnit
                            funit = initUnit 
                            dunit = initUnit 

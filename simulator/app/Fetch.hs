@@ -21,15 +21,15 @@ import Debug.Trace
 updateFetch :: CPU -> CPU
 updateFetch cpu = 
         if fetchN == 0 || freeBufferSpace == 0
-        then trace "FetchUnit buffer full or all instructions fetched " $ cpu { fetchUnit = tick (fetchUnit cpu) } 
-        else trace ("Fetching " ++ show fetchN ++ " new instructions: ")  $   
+        then trace "FetchUnit buffer full or all instructions fetched " (cpu { fetchUnit = tick (fetchUnit cpu) } )
+        else trace ("Fetching " ++ show fetchN ++ " new instructions: ")  (
                     let fUnit = (fetchUnit cpu) {   buffer = buff V.++ (V.slice current_pc fetchN (i_memory cpu)), 
                                                     cycles = 1 }
-                        idOrFlush = trace (show $ buffer fUnit) $ if npc cpu == pc cpu  then id else flushPipeline
+                        idOrFlush = trace (show $ buffer fUnit)  (if npc cpu == pc cpu  then id else flushPipeline)
 
                     in  idOrFlush $ cpu { fetchUnit = tick fUnit , 
                                           pc = (fromIntegral $ current_pc + fetchN), 
-                                          npc = (fromIntegral $ current_pc + fetchN) } 
+                                          npc = (fromIntegral $ current_pc + fetchN) } )
 
         where fetchN = if freeBufferSpace > endlen 
                        then endlen

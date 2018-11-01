@@ -27,6 +27,7 @@ dependencies:
 - data-default
 - template-haskell
 - megaparsec
+- containers
 
 library:
   source-dirs: src

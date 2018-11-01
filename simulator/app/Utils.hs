@@ -5,6 +5,7 @@ import Data.Word
 import Data.Bits
 import Control.Applicative
 import qualified Data.Vector as V
+import qualified Data.Map.Strict as Map
 
 type Offset             = Word32
 type Address            = Word32
@@ -15,7 +16,16 @@ type Memory             = V.Vector Word32
 type IMemory            = V.Vector Instruction
 type Register           = Word32
 
-data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 deriving (Enum, Show)
+data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 deriving (Enum, Show, Eq)
+
+instance Ord RegisterNum where
+    R0 <= R1 = True 
+    R1 <= R2 = True 
+    R2 <= R3 = True 
+    R3 <= R4 = True 
+    R4 <= R5 = True 
+    R5 <= R6 = True 
+    R6 <= R7 = True
 
 -- data Status             = Ready | Stalled  deriving Show
 
@@ -69,8 +79,8 @@ instance Show CPU where
         "Registers: " ++ show reg ++ "\n" ++
         "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
         "ExecutionUnits: " ++ show exec ++ 
-        "FetchUnit: " ++ show fetch ++
-        "DecodeUnit: " ++ show decode
+        "FetchUnit: " ++ show fetch ++ "\n" ++
+        "DecodeUnit: " ++ show decode ++ "\n"
 
 data UnitType           = IntUnit | MemUnit | BranchUnit
 
@@ -100,38 +110,33 @@ data RSEntry            = RSEntry {
                             rs_instruction  :: Instruction,
                             qj              :: Int,
                             qk              :: Int,
+                            qd              :: Int,
                             vj              :: Word32,
                             vk              :: Word32,
-                            addr            :: Address,
+                            addr            :: Word32,
                             busy            :: Bool
                         } deriving Show
 
-data RegisterStatuses   = RegisterStatuses {
-                            rs_r0 :: Int,
-                            rs_r1 :: Int,
-                            rs_r2 :: Int,
-                            rs_r3 :: Int,
-                            rs_r4 :: Int,
-                            rs_r5 :: Int,
-                            rs_r6 :: Int,
-                            rs_r7 :: Int
-                        } 
+type RegisterStatuses   = Map.Map RegisterNum Int 
 
-instance Show RegisterStatuses where 
-    show (RegisterStatuses r0 r1 r2 r3 r4 r5 r6 r7) =
-        "[R0: " ++ show r0 ++ ", R1: " ++ show r1 ++ ", R2: " ++ show r2 ++ ", R3: " ++ show r3 ++ ", R4: " ++ show r4 ++
-        ", R5: " ++ show r5 ++ ", R6: " ++ show r6 ++ ", R7: " ++ show r7 ++ "]\n"
+-- instance Show RegisterStatuses where 
+--     show (RegisterStatuses r0 r1 r2 r3 r4 r5 r6 r7) =
+--         "[R0: " ++ show r0 ++ ", R1: " ++ show r1 ++ ", R2: " ++ show r2 ++ ", R3: " ++ show r3 ++ ", R4: " ++ show r4 ++
+--         ", R5: " ++ show r5 ++ ", R6: " ++ show r6 ++ ", R7: " ++ show r7 ++ "]"
 
 data ReservationStation = ReservationStation {
-                            rs_entries      :: [RSEntry],
+                            rs_entries      :: V.Vector RSEntry,
                             reg_statuses    :: RegisterStatuses
-                        } deriving Show
+                        } 
+
+instance Show ReservationStation where 
+    show (ReservationStation entries statuses) = "RS_Entries: "  ++ show entries ++ ", RS_Statuses: " ++ show statuses
 
 initRegisterStatuses :: RegisterStatuses
-initRegisterStatuses = RegisterStatuses 0 0 0 0 0 0 0 0
+initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
 
 initReservationStation :: ReservationStation
-initReservationStation = ReservationStation [] initRegisterStatuses
+initReservationStation = ReservationStation V.empty initRegisterStatuses
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
@@ -183,6 +188,17 @@ toRegisterNum regNum
                         6 -> R6
                         7 -> R7
                         0 -> R0 
+
+getRegStat :: RegisterNum -> RegisterStatuses -> Maybe Int
+getRegStat regNum regstats 
+    = case regNum of    R0 -> Map.lookup R0 regstats
+                        -- R1 -> rs_r1
+                        -- R2 -> rs_r2 
+                        -- R3 -> rs_r3 
+                        -- R4 -> rs_r4 
+                        -- R5 -> rs_r5 
+                        -- R6 -> rs_r6 
+                        -- R7 -> rs_r7 
 
 tick :: Unit -> Unit 
 tick unit = unit {cycles = nextCycle} where

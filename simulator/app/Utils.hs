@@ -108,9 +108,9 @@ instance Show Units where
 
 data RSEntry            = RSEntry {
                             rs_instruction  :: Instruction,
+                            qd              :: Int,
                             qj              :: Int,
                             qk              :: Int,
-                            qd              :: Int,
                             vj              :: Word32,
                             vk              :: Word32,
                             addr            :: Word32,
@@ -191,14 +191,12 @@ toRegisterNum regNum
 
 getRegStat :: RegisterNum -> RegisterStatuses -> Maybe Int
 getRegStat regNum regstats 
-    = case regNum of    R0 -> Map.lookup R0 regstats
-                        -- R1 -> rs_r1
-                        -- R2 -> rs_r2 
-                        -- R3 -> rs_r3 
-                        -- R4 -> rs_r4 
-                        -- R5 -> rs_r5 
-                        -- R6 -> rs_r6 
-                        -- R7 -> rs_r7 
+    =  Map.lookup regNum regstats
+
+setRegStat :: RegisterNum -> Int -> RegisterStatuses -> RegisterStatuses
+setRegStat regNum  value regstats
+    =  Map.insert regNum value regstats
+ 
 
 tick :: Unit -> Unit 
 tick unit = unit {cycles = nextCycle} where

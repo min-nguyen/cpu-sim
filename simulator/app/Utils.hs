@@ -19,13 +19,9 @@ type Register           = Word32
 data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 deriving (Enum, Show, Eq)
 
 instance Ord RegisterNum where
-    R0 <= R1 = True 
-    R1 <= R2 = True 
-    R2 <= R3 = True 
-    R3 <= R4 = True 
-    R4 <= R5 = True 
-    R5 <= R6 = True 
-    R6 <= R7 = True
+    compare r_1 r_2 = compare (show r_1) (show r_2) 
+
+
 
 -- data Status             = Ready | Stalled  deriving Show
 
@@ -87,11 +83,12 @@ data UnitType           = IntUnit | MemUnit | BranchUnit
 data Unit               = Unit { 
                             cycles      :: Int,
                             instruction :: Maybe Instruction,
+                            rs_id       :: RSId,
                             buffer      :: V.Vector Instruction
                         }  
 
 instance Show Unit where 
-    show (Unit cycle instrct buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", Buffer: " ++ show buff ++ "]"
+    show (Unit cycle instrct rsid buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ ", Buffer: " ++ show buff ++ "]"
 
 data Units              = Units {
                             intUnit1    :: Unit,
@@ -106,6 +103,10 @@ instance Show Units where
                                                         "MemUnit: " ++ show memunit ++ " \n" ++ 
                                                         "BranchUnit: " ++ show branchunit ++ " \n"
 
+type RSId               = Int
+
+type RSs                = Map.Map RSId (Maybe RSEntry) 
+
 data RSEntry            = RSEntry {
                             rs_instruction  :: Instruction,
                             qd              :: Int,
@@ -115,17 +116,14 @@ data RSEntry            = RSEntry {
                             vk              :: Word32,
                             addr            :: Word32,
                             busy            :: Bool
-                        } deriving Show
+                        } deriving (Show)
+
+
 
 type RegisterStatuses   = Map.Map RegisterNum Int 
 
--- instance Show RegisterStatuses where 
---     show (RegisterStatuses r0 r1 r2 r3 r4 r5 r6 r7) =
---         "[R0: " ++ show r0 ++ ", R1: " ++ show r1 ++ ", R2: " ++ show r2 ++ ", R3: " ++ show r3 ++ ", R4: " ++ show r4 ++
---         ", R5: " ++ show r5 ++ ", R6: " ++ show r6 ++ ", R7: " ++ show r7 ++ "]"
-
 data ReservationStation = ReservationStation {
-                            rs_entries      :: V.Vector RSEntry,
+                            rs_entries      :: RSs,
                             reg_statuses    :: RegisterStatuses
                         } 
 
@@ -136,13 +134,13 @@ initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
 
 initReservationStation :: ReservationStation
-initReservationStation = ReservationStation V.empty initRegisterStatuses
+initReservationStation = ReservationStation (Map.fromList $ map (\i -> (i, Nothing)) [1..4]) initRegisterStatuses
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
 initUnit :: Unit 
-initUnit = Unit 0 Nothing V.empty
+initUnit = Unit 0 Nothing 0 V.empty
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
@@ -215,3 +213,29 @@ instructionToExecutionUnit instruction =
                             LW _ _ _-> MemUnit 
                             LI _ _ -> MemUnit 
                             SW _ _ -> MemUnit 
+
+
+allocateRegStats :: RegisterStatuses -> Instruction -> RegisterStatuses
+allocateRegStats regstats instrct = 
+    case instrct of 
+            ADD  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            ADDI s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            BEQ  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            LW   s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            LI   d i     -> (setRegStat d 0) regstats
+            SW   d i     -> (setRegStat d 0) regstats
+            JALR d s     -> (setRegStat s 0 . setRegStat d 0) regstats
+
+deallocateRegStats :: RegisterStatuses -> Instruction -> RSId ->  RegisterStatuses
+deallocateRegStats regstats instrct rsid = 
+    case instrct of 
+            ADD  d s1 s2 -> (setRegStat s1 rsid . setRegStat s2 rsid . setRegStat d rsid) regstats
+            ADDI s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
+            BEQ  s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
+            LW   s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
+            LI   d i     -> (setRegStat d rsid) regstats
+            SW   d i     -> (setRegStat d rsid) regstats
+            JALR d s     -> (setRegStat s rsid . setRegStat d rsid) regstats
+
+allocateRSEntry :: RSs -> RSId -> RSs 
+allocateRSEntry rs rsid = Map.insert rsid Nothing rs

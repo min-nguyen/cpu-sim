@@ -12,14 +12,16 @@ import Fetch
 import Control.Applicative
 import qualified Data.Vector as V
 import Debug.Trace
+import ReservationStation
 
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
     let 
         cpu1 = updateExec cpu  
-        cpu2 = updateDecode cpu1
-        cpu3 = updateFetch cpu2    
-    in  cpu3
+        cpu2 = updateRS cpu1
+        cpu3 = updateDecode cpu2
+        cpu4 = updateFetch cpu3   
+    in  cpu4
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
 --                 -> (state -> (toSelf, toNext)) -- splitter

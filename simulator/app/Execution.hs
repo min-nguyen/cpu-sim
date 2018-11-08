@@ -25,13 +25,21 @@ updateExecUnits cpu =
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> (cpuArg, unitArg) 
             Just instrct -> let cpu' = execInstruction cpuArg instrct
+
                                 rsentries = rs_entries $ rs_station cpu
                                 regstats  = reg_statuses $ rs_station cpu
-                                regstats' = allocateRegStats regstats instrct 
-                                rsId      = rs_id unitArg  
+
+                                rsId      = trace (show instrct) $ rs_id unitArg  
+
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
+
                                 rsentries' = allocateRSEntry rsentries rsId
-                                cpu'' = cpu' { rs_station = (rs_station cpu) { reg_statuses = regstats', rs_entries = rsentries' }}
+                                regstats' = allocateRegStats regstats instrct 
+                                rsStation' = if rsId == 1 
+                                             then moveUpRSEntries $ (rs_station cpu) { reg_statuses = regstats', rs_entries = rsentries' }
+                                             else (rs_station cpu) { reg_statuses = regstats', rs_entries = rsentries' }
+
+                                cpu'' = cpu' { rs_station = rsStation'}
                             in  (cpu'', tick unit')
         (cpu1, intunit1') = performExec cpu intunit1  
         (cpu2, intunit2') = performExec cpu1 intunit2

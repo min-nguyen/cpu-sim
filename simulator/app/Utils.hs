@@ -6,6 +6,7 @@ import Data.Bits
 import Control.Applicative
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
+import Data.Maybe
 
 type Offset             = Word32
 type Address            = Word32
@@ -130,6 +131,15 @@ data ReservationStation = ReservationStation {
 instance Show ReservationStation where 
     show (ReservationStation entries statuses) = "RS_Entries: "  ++ show entries ++ ", RS_Statuses: " ++ show statuses
 
+
+moveUpRSEntries :: ReservationStation -> ReservationStation 
+moveUpRSEntries rsstation 
+                    = let newRSEntries   = foldr (\rsId rss -> let rsentry = fromMaybe Nothing (Map.lookup rsId rss) in  Map.insert (rsId - 1) rsentry rss) rss [5,4,3,2] 
+                          newRegStatuses = Map.map (\regStat -> if regStat == 0 then regStat else regStat - 1) regs     
+                      in  rsstation {rs_entries = newRSEntries, reg_statuses = newRegStatuses}
+                      where rss = rs_entries rsstation 
+                            regs = reg_statuses rsstation
+
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
 
@@ -239,3 +249,4 @@ deallocateRegStats regstats instrct rsid =
 
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.insert rsid Nothing rs
+

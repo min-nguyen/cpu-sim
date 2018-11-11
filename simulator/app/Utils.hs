@@ -81,15 +81,19 @@ instance Show CPU where
 
 data UnitType           = IntUnit | MemUnit | BranchUnit
 
+data UnitId             = Int_Unit1 | Int_Unit2 | Mem_Unit | Branch_Unit | Fetch_Unit | Decode_Unit
+
 data Unit               = Unit { 
+                            unitId      :: UnitId,
                             cycles      :: Int,
                             instruction :: Maybe Instruction,
                             rs_id       :: RSId,
+                            rs_cycle    :: Int, 
                             buffer      :: V.Vector Instruction
                         }  
 
 instance Show Unit where 
-    show (Unit cycle instrct rsid buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ ", Buffer: " ++ show buff ++ "]"
+    show (Unit unit_id cycle instrct rsid rscycle buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ "RSCycle: " ++ show rscycle ++ ", Buffer: " ++ show buff ++ "]"
 
 data Units              = Units {
                             intUnit1    :: Unit,
@@ -106,7 +110,7 @@ instance Show Units where
 
 type RSId               = Int
 
-type RSs                = Map.Map RSId (Maybe RSEntry) 
+type RSs                = Map.Map RSId (Int, Maybe RSEntry) 
 
 data RSEntry            = RSEntry {
                             rs_instruction  :: Instruction,
@@ -132,25 +136,25 @@ instance Show ReservationStation where
     show (ReservationStation entries statuses) = "RS_Entries: "  ++ show entries ++ ", RS_Statuses: " ++ show statuses
 
 
-moveUpRSEntries :: ReservationStation -> ReservationStation 
-moveUpRSEntries rsstation 
-                    = let newRSEntries   = foldr (\rsId rss -> let rsentry = fromMaybe Nothing (Map.lookup rsId rss) in  Map.insert (rsId - 1) rsentry rss) rss [5,4,3,2] 
-                          newRegStatuses = Map.map (\regStat -> if regStat == 0 then regStat else regStat - 1) regs     
-                      in  rsstation {rs_entries = newRSEntries, reg_statuses = newRegStatuses}
-                      where rss = rs_entries rsstation 
-                            regs = reg_statuses rsstation
+-- moveUpRSEntries :: ReservationStation -> ReservationStation 
+-- moveUpRSEntries rsstation 
+--                     = let newRSEntries   = foldr (\rsId rss -> let rsentry = fromMaybe Nothing (Map.lookup rsId rss) in  Map.insert (rsId - 1) rsentry rss) rss [5,4,3,2] 
+--                           newRegStatuses = Map.map (\regStat -> if regStat == 0 then regStat else regStat - 1) regs     
+--                       in  rsstation {rs_entries = newRSEntries, reg_statuses = newRegStatuses}
+--                       where rss = rs_entries rsstation 
+--                             regs = reg_statuses rsstation
 
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
 
 initReservationStation :: ReservationStation
-initReservationStation = ReservationStation (Map.fromList $ map (\i -> (i, Nothing)) [1..4]) initRegisterStatuses
+initReservationStation = ReservationStation (Map.fromList $ map (\i -> (i, (0, Nothing))) [1..4]) initRegisterStatuses
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
-initUnit :: Unit 
-initUnit = Unit 0 Nothing 0 V.empty
+initUnit :: UnitId -> Unit 
+initUnit unit_id = Unit unit_id 0 Nothing 0 0 V.empty 
 
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
@@ -159,9 +163,9 @@ initCPU instructions = let i_mem = V.fromList instructions
                            registers = initRegisters
                            pc = fromIntegral 0
                            npc = fromIntegral 0
-                           eunits =  Units initUnit initUnit initUnit initUnit
-                           funit = initUnit 
-                           dunit = initUnit 
+                           eunits =  Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)
+                           funit = initUnit Fetch_Unit
+                           dunit = initUnit Decode_Unit
                         in CPU  i_mem d_mem rs_station registers pc npc eunits funit dunit
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
@@ -211,7 +215,7 @@ tick unit = unit {cycles = nextCycle} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
 
 flushPipeline :: CPU -> CPU  
-flushPipeline cpu = cpu { decodeUnit = initUnit, fetchUnit = initUnit, executionUnits = Units initUnit initUnit initUnit initUnit }
+flushPipeline cpu = cpu { decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 
@@ -248,5 +252,5 @@ deallocateRegStats regstats instrct rsid =
             JALR d s     -> (setRegStat s rsid . setRegStat d rsid) regstats
 
 allocateRSEntry :: RSs -> RSId -> RSs 
-allocateRSEntry rs rsid = Map.insert rsid Nothing rs
+allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 

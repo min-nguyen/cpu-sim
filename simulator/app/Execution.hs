@@ -22,31 +22,31 @@ updateExec cpu = let decoder        = (decodeUnit cpu)
 updateExecUnits :: CPU -> CPU 
 updateExecUnits cpu = 
     let Units intunit1 intunit2 memunit branchunit = executionUnits cpu 
+        -- need to execute in cycle order
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> (cpuArg, unitArg) 
             Just instrct -> let cpu' = execInstruction cpuArg instrct
 
-                                rsentries = rs_entries $ rs_station cpu
-                                regstats  = reg_statuses $ rs_station cpu
+                                rsentries = rs_entries $ rs_station cpu'
+                                regstats  = reg_statuses $ rs_station cpu'
 
-                                rsId      = trace (show instrct) $ rs_id unitArg  
+                                rsId      = rs_id unitArg  
 
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                 rsentries' = allocateRSEntry rsentries rsId
-                                regstats' = allocateRegStats regstats instrct 
-                                rsStation' = if rsId == 1 
-                                             then moveUpRSEntries $ (rs_station cpu) { reg_statuses = regstats', rs_entries = rsentries' }
-                                             else (rs_station cpu) { reg_statuses = regstats', rs_entries = rsentries' }
+                                regstats' = trace ("Executing " ++ show instrct ++ "\n") $ allocateRegStats regstats instrct 
+                                rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
 
                                 cpu'' = cpu' { rs_station = rsStation'}
                             in  (cpu'', tick unit')
-        (cpu1, intunit1') = performExec cpu intunit1  
+        -- units =    map fst $ sortBy (comparing snd) $ map (\unit -> (rs_cycle unit, unit)) [intunit1, intunit2, memunit, branchunit]
+        (cpu1, intunit1') = foldl (performExec cpu) cpu intunit1  
         (cpu2, intunit2') = performExec cpu1 intunit2
         (cpu3, memunit')  = performExec cpu2 memunit 
         (cpu4, branchunit') = performExec cpu3 branchunit
 
-    in  cpu4 { executionUnits = Units intunit1' intunit2' memunit' branchunit' }
+    in  trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu4) ++ "\n") cpu4 { executionUnits = Units intunit1' intunit2' memunit' branchunit' }
 
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     

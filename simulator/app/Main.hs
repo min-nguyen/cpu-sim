@@ -17,10 +17,10 @@ import ReservationStation
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
     let 
-        cpu1 = updateExec cpu  
-        cpu2 = updateRS cpu1
-        cpu3 = updateDecode cpu2
-        cpu4 = updateFetch cpu3   
+        cpu1 = updateFetch cpu  
+        cpu2 = updateDecode cpu1
+        cpu3 = updateRS  cpu2
+        cpu4 = updateExec  cpu3   
     in  cpu4
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
@@ -41,5 +41,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> trace (show (x a) ++ "\n\n") (x a)) cpu (replicate 20 updateCPU) 
+    let cpu' = foldr (\x a -> trace (show (x a)) (x a)) cpu (replicate 20 updateCPU) 
     print cpu'

@@ -240,16 +240,17 @@ allocateRegStats regstats instrct =
             SW   d i     -> (setRegStat d 0) regstats
             JALR d s     -> (setRegStat s 0 . setRegStat d 0) regstats
 
-deallocateRegStats :: RegisterStatuses -> Instruction -> RSId ->  RegisterStatuses
-deallocateRegStats regstats instrct rsid = 
-    case instrct of 
-            ADD  d s1 s2 -> (setRegStat s1 rsid . setRegStat s2 rsid . setRegStat d rsid) regstats
-            ADDI s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
-            BEQ  s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
-            LW   s1 s2 i -> (setRegStat s1 rsid . setRegStat s2 rsid) regstats
-            LI   d i     -> (setRegStat d rsid) regstats
-            SW   d i     -> (setRegStat d rsid) regstats
-            JALR d s     -> (setRegStat s rsid . setRegStat d rsid) regstats
+deallocateRegStats :: RegisterStatuses -> Instruction -> RSId -> Int -> Int -> Int -> RegisterStatuses
+deallocateRegStats regstats instrct rsid d_status s1_status s2_status = 
+    let f = \reg rsID status reg_stats -> if status == 0 then setRegStat reg rsID reg_stats else reg_stats
+    in case instrct of 
+            ADD  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            ADDI s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status)  regstats
+            BEQ  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            LW   s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            LI   d i     -> (f d rsid d_status) regstats
+            SW   d i     -> (f d rsid d_status) regstats
+            JALR d s     -> (f s rsid s1_status . f d rsid d_status) regstats
 
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs

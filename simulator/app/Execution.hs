@@ -8,6 +8,8 @@ import Control.Applicative
 import qualified Data.Vector as V
 import Debug.Trace
 import ReservationStation
+import Data.Ord
+import Data.List 
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
@@ -24,7 +26,7 @@ updateExecUnits cpu =
     let Units intunit1 intunit2 memunit branchunit = executionUnits cpu 
         -- need to execute in cycle order
         performExec cpuArg unitArg = case instruction unitArg of
-            Nothing -> (cpuArg, unitArg) 
+            Nothing -> cpuArg
             Just instrct -> let cpu' = execInstruction cpuArg instrct
 
                                 rsentries = rs_entries $ rs_station cpu'
@@ -39,14 +41,17 @@ updateExecUnits cpu =
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
 
                                 cpu'' = cpu' { rs_station = rsStation'}
-                            in  (cpu'', tick unit')
-        -- units =    map fst $ sortBy (comparing snd) $ map (\unit -> (rs_cycle unit, unit)) [intunit1, intunit2, memunit, branchunit]
-        (cpu1, intunit1') = foldl (performExec cpu) cpu intunit1  
-        (cpu2, intunit2') = performExec cpu1 intunit2
-        (cpu3, memunit')  = performExec cpu2 memunit 
-        (cpu4, branchunit') = performExec cpu3 branchunit
+                                cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 = unit'}}  
+                                                                Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit'}}  
+                                                                Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit'}}  
+                                                                Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit'}} 
+                                      
+                            in  cpu'''
+        units =    map snd $ sortBy (comparing fst) $ map (\unit -> (rs_cycle unit, unit)) [intunit1, intunit2, memunit, branchunit]
+        
+        cpu' =  foldl (\cp unit  -> performExec cp unit) cpu units  
 
-    in  trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu4) ++ "\n") cpu4 { executionUnits = Units intunit1' intunit2' memunit' branchunit' }
+    in  trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu') ++ "\n") cpu'
 
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     

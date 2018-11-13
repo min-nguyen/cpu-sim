@@ -60,13 +60,18 @@ updateRSEntries cpu
                                                                 regstats   = reg_statuses resstation
                                 
                                                                 RSEntry instrct d_status s1_status s2_status s1_val s2_val addr busy = updateRSEntry cp regstats cycle entry
-                                                                (cp', issued)  =    if (d_status, s1_status, s2_status) == (0, 0, 0) 
-                                                                                    then let (cp'', issued) = issueInstruction cp entry rsid cycle
-                                                                                         in if issued 
-                                                                                            then let regstats' = deallocateRegStats regstats instrct rsid in (cp'' { rs_station = resstation {reg_statuses = regstats'}}, True)
-                                                                                            else (cp'', False) 
-                                                                                    else (cp, False)
-                                                            in  (cp', issued)
+
+                                                                regstats' = (deallocateRegStats regstats instrct rsid d_status s1_status s2_status) :: RegisterStatuses
+
+                                                                resstation' = resstation {reg_statuses = regstats'}
+
+                                                                cp' = cp {rs_station = resstation'}
+
+                                                                (cp'', issued)  =    if (d_status, s1_status, s2_status) == (0, 0, 0) 
+                                                                                     then issueInstruction cp' entry rsid cycle
+                                                                                     else (cp', False)
+                                                            in  (cp'', issued)
+                                                            
                     cycleOrder     = map fst $ sortBy (\(k1, c1) (k2, c2) -> if c1 == c2 && k1 > k2 then GT else if c1 == c2 && k1 < k2 then LT else if c1 > c2 then GT else LT) (map (\(k, (c, x)) -> (k, c)) (Map.toList entries)  )                                          
                 in    foldl
                             (\cpu  rsid  -> let maybeEntry = Map.lookup rsid (rs_entries $ rs_station cpu)

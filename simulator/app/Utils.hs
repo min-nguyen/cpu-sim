@@ -133,7 +133,7 @@ data ReservationStation = ReservationStation {
                         } 
 
 instance Show ReservationStation where 
-    show (ReservationStation entries statuses) = "RS_Entries: "  ++ show entries ++ ", RS_Statuses: " ++ show statuses
+    show (ReservationStation entries statuses) = "RS_Entries: \n"  ++ unwords (map (\entry -> show entry ++ "\n") (Map.toList entries)) ++ ", RS_Statuses: " ++ show statuses
 
 
 -- moveUpRSEntries :: ReservationStation -> ReservationStation 
@@ -255,3 +255,5 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 
+changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
+changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs

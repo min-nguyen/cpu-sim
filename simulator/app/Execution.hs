@@ -37,7 +37,7 @@ updateExecUnits cpu =
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                 rsentries' = allocateRSEntry rsentries rsId
-                                regstats' = trace ("Executing " ++ show instrct ++ "\n") $ allocateRegStats regstats instrct 
+                                regstats' =  allocateRegStats regstats instrct --trace ("Executing " ++ show instrct ++ "\n") $
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
 
                                 cpu'' = cpu' { rs_station = rsStation'}
@@ -51,7 +51,7 @@ updateExecUnits cpu =
         
         cpu' =  foldl (\cp unit  -> performExec cp unit) cpu units  
 
-    in  trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu') ++ "\n") cpu'
+    in  cpu' -- trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu') ++ "\n")
 
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     

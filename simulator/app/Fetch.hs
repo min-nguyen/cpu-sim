@@ -28,8 +28,8 @@ updateFetch cpu =
                         idOrFlush = trace (show $ buffer fUnit)  (if npc cpu == pc cpu  then id else flushPipeline)
 
                     in  idOrFlush $ cpu { fetchUnit = tick fUnit , 
-                                          pc = (fromIntegral $ current_pc + fetchN), 
-                                          npc = (fromIntegral $ current_pc + fetchN) } )
+                                          pc =  if npc cpu == pc cpu then (fromIntegral $ current_pc + fetchN) else npc cpu, 
+                                          npc = if npc cpu == pc cpu then (fromIntegral $ current_pc + fetchN) else npc cpu} )
 
         where fetchN = if freeBufferSpace > endlen 
                        then endlen

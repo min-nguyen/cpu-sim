@@ -60,6 +60,7 @@ data CPU                = CPU {
                             i_memory        :: IMemory,
                             d_memory        :: Memory,
                             rs_station      :: ReservationStation,
+                            rob             :: ReorderBuffer,
                             registers       :: Registers,
                             pc              :: Word32,
                             npc             :: Word32,
@@ -69,10 +70,11 @@ data CPU                = CPU {
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station reg pc npc exec fetch decode) = 
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode) = 
         "InstructionMemory: " ++ show imem ++ "\n" ++
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
+        "ReorderBuffer: " ++ show rob ++ "\n" ++
         "Registers: " ++ show reg ++ "\n" ++
         "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
         "ExecutionUnits: " ++ show exec ++ 
@@ -123,7 +125,14 @@ data RSEntry            = RSEntry {
                             busy            :: Bool
                         } deriving (Show)
 
+type ROBId              = Int 
 
+data ROBEntry           = ROBEntry {
+                            rob_instruction :: Instruction,
+                            rob_value       :: Int
+                        } deriving Show
+
+data ReorderBuffer      = ReorderBuffer [(ROBId, Maybe ROBEntry)] deriving Show
 
 type RegisterStatuses   = Map.Map RegisterNum Int 
 
@@ -144,6 +153,9 @@ instance Show ReservationStation where
 --                       where rss = rs_entries rsstation 
 --                             regs = reg_statuses rsstation
 
+initReorderBuffer :: ReorderBuffer
+initReorderBuffer   = ReorderBuffer []
+
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
 
@@ -160,13 +172,14 @@ initCPU :: [Instruction] -> CPU
 initCPU instructions = let i_mem = V.fromList instructions 
                            d_mem = V.replicate 30 (fromIntegral 0)
                            rs_station = initReservationStation
+                           reorderBuff = initReorderBuffer
                            registers = initRegisters
                            pc = fromIntegral 0
                            npc = fromIntegral 0
                            eunits =  Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)
                            funit = initUnit Fetch_Unit
                            dunit = initUnit Decode_Unit
-                        in CPU  i_mem d_mem rs_station registers pc npc eunits funit dunit
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
 writeRegister registers regNum writeVal
@@ -215,7 +228,7 @@ tick unit = unit {cycles = nextCycle} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
 
 flushPipeline :: CPU -> CPU  
-flushPipeline cpu = cpu { decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
+flushPipeline cpu = cpu { rs_station = initReservationStation, decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 

@@ -43,7 +43,6 @@ updateRS cpu
 
                                             -- issue occuring with instructions being executed in wrong order, due to simply using any available rs slots
 
-
                                         else (cpu, decoder)
                 
                 cpu''       = cpu' { decodeUnit = decoder'}
@@ -55,7 +54,7 @@ updateRSEntries cpu
             = let   rs             = rs_station cpu
                     entries        = rs_entries rs 
                     statuses       = reg_statuses rs
-                    updateRegStats cp  entry cycle rsid = let   resstation = rs_station cp
+                    updateRegStation cp  entry cycle rsid = let resstation = rs_station cp
                                                                 resentries = rs_entries resstation
                                                                 regstats   = reg_statuses resstation
                                 
@@ -79,11 +78,10 @@ updateRSEntries cpu
                                                             in  (cp', issued)
                                                             
                     cycleOrder     = map fst $ sortBy (\(k1, c1) (k2, c2) -> if c1 == c2 && k1 > k2 then GT else if c1 == c2 && k1 < k2 then LT else if c1 > c2 then GT else LT) (map (\(k, (c, x)) -> (k, c)) (Map.toList entries)  )                                          
-                in    trace ("CYCLE ORDER: " ++ show cycleOrder ++ "\n") $ foldl
-                            (\cpu  rsid  -> let maybeEntry = Map.lookup rsid (rs_entries $ rs_station cpu)
+                in  foldl   (\cpu  rsid  -> let maybeEntry = Map.lookup rsid (rs_entries $ rs_station cpu)
                                             in  case maybeEntry of 
                                                             Just (cycle, Just entry) ->    
-                                                                            let (cpu', issued)  = updateRegStats cpu entry cycle rsid  -- should only issue instruction if regstatuses are (0,0,0) !!    
+                                                                            let (cpu', issued)  = updateRegStation cpu entry cycle rsid  -- should only issue instruction if regstatuses are (0,0,0) !!    
                                                                             in  cpu'
                                                             
                                                             _ -> cpu ) cpu cycleOrder                           
@@ -108,7 +106,10 @@ createRSEntry cpu  statuses   instruction  =
                                                     in  (maxCycle, RSEntry instruction s1_status s2_status s2_status v1 i 0 False)
                                     BEQ  s1 s2 i -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                    in  (maxCycle, RSEntry instruction s1_status s2_status s2_status v1 v2 i False) 
+                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                    in  (maxCycle, RSEntry instruction s1_status' s2_status' s2_status' v1 v2 i False) 
                                     LW   d s1 i ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
 
@@ -117,7 +118,10 @@ createRSEntry cpu  statuses   instruction  =
 
                                                     in  (maxCycle, ( RSEntry instruction d_status' s1_status' s1_status' v1 v1 0 False) ) 
                                     LI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
-                                                    in  (maxCycle, RSEntry instruction d_status 0 0 i i 0 False )
+                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status'] = [findEntry d invalidEntries d_status]
+
+                                                    in  (maxCycle, RSEntry instruction d_status' 0 0 i i 0 False )
                                     SW   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
                                                         invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status'] = [findEntry d invalidEntries d_status]
@@ -154,32 +158,35 @@ updateRSEntry cpu  statuses cycle entry  =
                                     ADD  d s1 s2 -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
 
-
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
-
-                                                    in  trace ("Invalid entries: " ++ show invalidEntries ++ "\n") (RSEntry instruction d_status' s1_status' s2_status'  v1 v2 0 False)
+                                                    in  (RSEntry instruction d_status' s1_status' s2_status'  v1 v2 0 False)
                                     ADDI d s1 i ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
                                                     in  (RSEntry instruction d_status s1_status 0 v1 i 0 False)
                                     BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                    in  (RSEntry instruction 0 s1_status s2_status v1 v2 i False) 
+                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                    in  (RSEntry instruction 0 s1_status' s2_status' v1 v2 i False) 
                                     LW   d s1 i  -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
 
                                                         invalidEntries = compareEntries [d, s1] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status]
 
-                                                    in  trace ("Invalid entries: " ++ show invalidEntries ++ "\n") ( RSEntry instruction d_status' s1_status' s1_status' v1 v1 0 False) 
+                                                    in  ( RSEntry instruction d_status' s1_status' s1_status' v1 v1 0 False) 
                                     LI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
-                                                    in  (RSEntry instruction d_status 0 0 i i 0 False )
+                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status'] = [findEntry d invalidEntries d_status]
+
+                                                    in  (RSEntry instruction d_status' 0 0 i i 0 False )
                                     SW   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
 
                                                         invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status'] = [findEntry d invalidEntries d_status]
 
-                                                    in  trace ("Invalid entries: " ++ show invalidEntries ++ "\n") (RSEntry instruction d_status' 0 0 i i 0 False )
+                                                    in  (RSEntry instruction d_status' 0 0 i i 0 False )
                                     JALR d s     -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
                                                         [addr] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
                                                     in  (RSEntry instruction d_status s_status 0 addr 0 addr False )
@@ -206,7 +213,6 @@ issueInstruction cpu rs_entry rsId rsCycle
 
                                 RSEntry instrct d_s s1_s s2_s _ _ _ _ = rs_entry 
                                 
-
                                 (cpu', issueAgain) 
                                     =       case instructionToExecutionUnit instrct of 
                                                     IntUnit -> case instruction (intUnit1 $ executionUnits cpu) of 

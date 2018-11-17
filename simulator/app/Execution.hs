@@ -13,11 +13,7 @@ import Data.List
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
-                    --  executor'      = case (instruction executor) of 
-                    --                        Just instrct -> executor 
-                    --                        Nothing      -> executor {instruction = instruction decoder}
-                        
-                                     
+       
                  in  updateExecUnits cpu
 
 
@@ -37,7 +33,7 @@ updateExecUnits cpu =
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                 rsentries' = allocateRSEntry rsentries rsId
-                                regstats' =  allocateRegStats regstats instrct --trace ("Executing " ++ show instrct ++ "\n") $
+                                regstats' =  trace ("Executing " ++ show instrct ++ "\n") $ allocateRegStats regstats instrct --
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
 
                                 cpu'' = cpu' { rs_station = rsStation'}
@@ -51,7 +47,7 @@ updateExecUnits cpu =
         
         cpu' =  foldl (\cp unit  -> performExec cp unit) cpu units  
 
-    in  cpu' -- trace ("RS ENTRIES : " ++ show (rs_entries $ rs_station cpu') ++ "\n")
+    in  cpu' 
 
 execInstruction :: CPU -> Instruction -> CPU
 execInstruction cpu (ADD dest source_a source_b)     

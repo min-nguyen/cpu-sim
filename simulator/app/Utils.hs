@@ -129,10 +129,12 @@ type ROBId              = Int
 
 data ROBEntry           = ROBEntry {
                             rob_instruction :: Instruction,
-                            rob_value       :: Int
+                            rob_value       :: Word32
                         } deriving Show
 
-data ReorderBuffer      = ReorderBuffer [(ROBId, Maybe ROBEntry)] deriving Show
+data ReorderBuffer      = ReorderBuffer { 
+                            rob_buffer :: [(ROBId, Maybe ROBEntry)]
+                          } deriving Show
 
 type RegisterStatuses   = Map.Map RegisterNum Int 
 
@@ -154,7 +156,7 @@ instance Show ReservationStation where
 --                             regs = reg_statuses rsstation
 
 initReorderBuffer :: ReorderBuffer
-initReorderBuffer   = ReorderBuffer []
+initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 10]]
 
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
@@ -180,6 +182,9 @@ initCPU instructions = let i_mem = V.fromList instructions
                            funit = initUnit Fetch_Unit
                            dunit = initUnit Decode_Unit
                         in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit
+
+writeMemory :: CPU -> Int -> RegisterNum -> Memory
+writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
 writeRegister registers regNum writeVal
@@ -270,3 +275,6 @@ allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 
 changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
 changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs
+
+euToROB :: (Instruction, Word32) -> ROBEntry
+euToROB (instrct, val) = ROBEntry instrct val

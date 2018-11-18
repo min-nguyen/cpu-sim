@@ -10,6 +10,7 @@ import Debug.Trace
 import ReservationStation
 import Data.Ord
 import Data.List 
+import ReorderBuffer 
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
@@ -23,12 +24,13 @@ updateExecUnits cpu =
         -- need to execute in cycle order
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> cpuArg
-            Just instrct -> let cpu' = execInstruction cpuArg instrct
-
+            Just instrct -> let robEntry = euToROB $ execInstruction cpuArg instrct
+                                rsId      = rs_id unitArg  
+                                rsCycle   = rs_cycle unitArg
+                                cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
+                                
                                 rsentries = rs_entries $ rs_station cpu'
                                 regstats  = reg_statuses $ rs_station cpu'
-
-                                rsId      = rs_id unitArg  
 
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
@@ -49,38 +51,30 @@ updateExecUnits cpu =
 
     in  cpu' 
 
-execInstruction :: CPU -> Instruction -> CPU
+execInstruction :: CPU -> Instruction -> (Instruction, Word32)
 execInstruction cpu (ADD dest source_a source_b)     
     = let regs = registers cpu
           val  = sum $ map (readRegister regs) [source_a, source_b] 
-      in  cpu { registers = writeRegister regs dest val } 
+      in  (ADD dest source_a source_b, val)
 execInstruction cpu (ADDI dest source i)  
     = let regs = registers cpu
           [dest_reg, source_reg] = map (readRegister regs) [dest, source] 
           val = i + source_reg
-      in  cpu { registers = writeRegister regs dest val } 
+      in  (ADDI dest source i, val)  
 execInstruction cpu (BEQ source_a source_b i)     
     = let regs   = registers cpu
           [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
       in case () of 
-                _ | a == b        -> cpu { npc = i }
-                _                 -> cpu
-execInstruction cpu (LW dest source _)   
+                _ | a == b        -> (BEQ source_a source_b i, 1)
+                _                 -> (BEQ source_a source_b i, 0)
+execInstruction cpu (LW dest source i)   
     = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
-      in  cpu {  registers = writeRegister (registers cpu) dest loadedWord} 
-execInstruction cpu (JALR dest source) 
-    = let regs = registers cpu
-          regs' = writeRegister regs dest (pc cpu + 1)
-      in  cpu { npc = readRegister regs' source }
+      in  (LW dest source i, loadedWord)
 execInstruction cpu (SW s i)
-    = let d_memory' = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
-      in  cpu { d_memory = d_memory' }
+    = (SW s i, 1)
 execInstruction cpu (LI d i)
-    = let regs = registers cpu 
-      in  cpu { registers = writeRegister regs d i }     
--- execInstruction cpu (J i) 
---     = let pcHi4Bits = (shiftL (shiftR (pc cpu) 28) 28)
---           jumpAddress = (shiftL i 2) .&. pcHi4Bits
---       in  cpu { pc = npc cpu, npc = jumpAddress}
-
-
+    = (LI d i, i)
+-- execInstruction cpu (JALR dest source) 
+--     = let regs = registers cpu
+--           regs' = writeRegister regs dest (pc cpu + 1)
+--       in  cpu { npc = readRegister regs' source }

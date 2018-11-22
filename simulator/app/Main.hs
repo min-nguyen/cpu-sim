@@ -18,11 +18,11 @@ import ReorderBuffer
 updateCPU :: CPU -> CPU 
 updateCPU cpu = 
     let   
-        cpu1 = updateROB cpu
-        cpu2 = updateFetch cpu1 
-        cpu3 = updateDecode cpu2
-        cpu4 = updateRS  cpu3
-        cpu5 = updateExec  cpu4 
+        cpu1 = updateFetch cpu
+        cpu2 = updateDecode cpu1
+        cpu3 = updateRS  cpu2
+        cpu4 = updateExec  cpu3
+        cpu5 = updateROB cpu4
     in  cpu5
 
 -- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
@@ -43,5 +43,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> trace (show (x a)) (x a)) cpu (replicate 20 updateCPU) 
+    let cpu' = foldr (\x a -> (x a)) cpu (replicate 10 updateCPU) 
     print cpu'

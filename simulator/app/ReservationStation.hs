@@ -104,12 +104,12 @@ createRSEntry cpu  statuses   instruction  =
                                     ADDI s1 s2 i -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2, s2]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s2, s2_status)]
                                                     in  (maxCycle, RSEntry instruction s1_status s2_status s2_status v1 i 0 False)
-                                    BEQ  s1 s2 i -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2, s2]
+                                    BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    in  (maxCycle, RSEntry instruction s1_status' s2_status' s2_status' v1 v2 i False) 
+                                                    in  (maxCycle, RSEntry instruction 0 s1_status' s2_status' v1 v2 i False) 
                                     LW   d s1 i ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
 

@@ -233,7 +233,9 @@ tick unit = unit {cycles = nextCycle} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
 
 flushPipeline :: CPU -> CPU  
-flushPipeline cpu = cpu { rs_station = initReservationStation, decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
+flushPipeline cpu = cpu { rs_station = initReservationStation, 
+                          rob = initReorderBuffer,
+                          decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 

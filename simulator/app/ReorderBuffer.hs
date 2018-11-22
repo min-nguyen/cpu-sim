@@ -33,7 +33,7 @@ insertReorderBuffer robId robEntry reorderBuff =
     let ReorderBuffer entries = reorderBuff
         headId = fst $ head entries
         offset = robId - headId
-        entries' =  trace ("OFFSET" ++ show offset ++ " " ++ show headId ++ " " ++ show robId) $ replaceNth offset (robId, Just robEntry) entries 
+        entries' =  replaceNth offset (robId, Just robEntry) entries 
     in  ReorderBuffer entries'
     where replaceNth :: Int -> a -> [a] -> [a]
           replaceNth _ _ [] = []
@@ -46,26 +46,26 @@ popReorderBuffer cpu =
     let reorderBuff = rob cpu
         (robId, maybeEntry) = head (rob_buffer reorderBuff)
     in  case maybeEntry of Nothing -> (cpu, False)
-                           Just entry -> (commitReorderBuffer entry reorderBuff cpu, True)
+                           Just entry -> commitReorderBuffer entry reorderBuff cpu
 
-commitReorderBuffer :: ROBEntry -> ReorderBuffer -> CPU ->  CPU                       
+commitReorderBuffer :: ROBEntry -> ReorderBuffer -> CPU ->  (CPU, Bool)                       
 commitReorderBuffer entry reorderBuff cpu =
     let lastRobId    = fst $ last ( rob_buffer reorderBuff)
 
         reorderBuff' = trace (show lastRobId) $ ReorderBuffer $ tail (rob_buffer reorderBuff) ++ [(lastRobId, Nothing)]
         cpu' = case entry of 
             ROBEntry (ADD  d s1 s2) value -> let registers' = writeRegister (registers cpu) d value 
-                                             in  cpu {registers = registers', rob = reorderBuff'}
+                                             in  (cpu {registers = registers', rob = reorderBuff'}, True)
             ROBEntry (ADDI s1 s2 i) value -> let registers' = writeRegister (registers cpu) s1 value 
-                                             in  cpu {registers = registers', rob = reorderBuff'}
+                                             in  (cpu {registers = registers', rob = reorderBuff'}, True)
             ROBEntry (BEQ  s1 s2 i) value -> let npc' = case value of 0 -> npc cpu
                                                                       1 -> i 
-                                             in  cpu {npc = npc'}
+                                             in  (flushPipeline (cpu {npc = npc', rob = reorderBuff'}), False)
             ROBEntry (LW   d s1 i) value -> let registers' = writeRegister (registers cpu) d value 
-                                            in  cpu {registers = registers', rob = reorderBuff'}
+                                            in  (cpu {registers = registers', rob = reorderBuff'}, True )
             ROBEntry (LI   d i) value    -> let registers' = writeRegister (registers cpu) d value 
-                                            in  cpu {registers = registers', rob = reorderBuff'}
+                                            in  (cpu {registers = registers', rob = reorderBuff'}, True)
             ROBEntry (SW   d i) value    -> let memory' = writeMemory cpu (fromIntegral i) d
-                                            in  cpu {d_memory = memory', rob = reorderBuff'} 
+                                            in  (cpu {d_memory = memory', rob = reorderBuff'} , True)
             -- (JALR d s, value)     -> 
-    in cpu'
+    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n CPU AFTER : " ++ show cpu' ++ "\n\n") cpu'

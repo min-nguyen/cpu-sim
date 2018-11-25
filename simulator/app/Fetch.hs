@@ -23,7 +23,8 @@ updateFetch cpu =
         if fetchN == 0 || freeBufferSpace == 0
         then trace "FetchUnit buffer full or all instructions fetched " (cpu { fetchUnit = tick (fetchUnit cpu) } )
         else trace ("Fetching " ++ show fetchN ++ " new instructions: ")  $
-                    let fUnit = (fetchUnit cpu) {   buffer = buff V.++ (V.slice current_pc fetchN (i_memory cpu)), 
+                    let buffer' = buff V.++ (V.zip (V.slice current_pc fetchN (i_memory cpu)) (V.fromList [current_pc ..]) ) 
+                        fUnit = (fetchUnit cpu) { buffer = buffer'    , 
                                                     cycles = 1 }
                   
                         cpu' = cpu { fetchUnit = tick fUnit , 

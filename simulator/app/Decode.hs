@@ -13,7 +13,7 @@ updateDecode cpu =
     let 
         fetcher = fetchUnit cpu
         decoder = decodeUnit cpu
-
+        
         decodebuff = (buffer decoder) V.++ V.take fetchN (buffer fetcher)
         fetchbuff = V.drop fetchN (buffer fetcher)
         (fetcher', decoder') = (fetcher {buffer = fetchbuff} , decoder { buffer = decodebuff })

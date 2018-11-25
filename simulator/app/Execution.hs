@@ -24,7 +24,9 @@ updateExecUnits cpu =
         -- need to execute in cycle order
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> cpuArg
-            Just instrct -> let robEntry = euToROB $ execInstruction cpuArg instrct
+            Just instructionAndPc -> 
+                            let instrct = fst instructionAndPc
+                                robEntry = euToROB $ execInstruction cpuArg instructionAndPc
                                 rsId      = rs_id unitArg  
                                 rsCycle   = rs_cycle unitArg
                                 cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
@@ -35,7 +37,7 @@ updateExecUnits cpu =
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                 rsentries' = allocateRSEntry rsentries rsId
-                                regstats' =  trace ("Executing " ++ show instrct ++ "\n") $ allocateRegStats regstats instrct --
+                                regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer \n") $ allocateRegStats regstats instrct --
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
 
                                 cpu'' = cpu' { rs_station = rsStation'}
@@ -51,29 +53,29 @@ updateExecUnits cpu =
 
     in  cpu' 
 
-execInstruction :: CPU -> Instruction -> (Instruction, Word32)
-execInstruction cpu (ADD dest source_a source_b)     
+execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, Word32)
+execInstruction cpu (ADD dest source_a source_b, pc)     
     = let regs = registers cpu
           val  = sum $ map (readRegister regs) [source_a, source_b] 
-      in  (ADD dest source_a source_b, val)
-execInstruction cpu (ADDI dest source i)  
+      in  ((ADD dest source_a source_b, pc), val)
+execInstruction cpu (ADDI dest source i, pc)  
     = let regs = registers cpu
           [dest_reg, source_reg] = map (readRegister regs) [dest, source] 
           val = i + source_reg
-      in  (ADDI dest source i, val)  
-execInstruction cpu (BEQ source_a source_b i)     
+      in  ((ADDI dest source i, pc), val)  
+execInstruction cpu (BEQ source_a source_b i, pc)     
     = let regs   = registers cpu
           [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
       in case () of 
-                _ | a == b        -> (BEQ source_a source_b i, 1)
-                _                 -> (BEQ source_a source_b i, 0)
-execInstruction cpu (LW dest source i)   
+                _ | a == b        -> ((BEQ source_a source_b i, pc), 1)
+                _                 -> ((BEQ source_a source_b i, pc), 0)
+execInstruction cpu (LW dest source i, pc)   
     = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
-      in  (LW dest source i, loadedWord)
-execInstruction cpu (SW s i)
-    = (SW s i, 1)
-execInstruction cpu (LI d i)
-    = (LI d i, i)
+      in  ((LW dest source i, pc), loadedWord)
+execInstruction cpu (SW s i, pc)
+    = ((SW s i, pc), 1)
+execInstruction cpu (LI d i, pc)
+    = ((LI d i, pc), i)
 -- execInstruction cpu (JALR dest source) 
 --     = let regs = registers cpu
 --           regs' = writeRegister regs dest (pc cpu + 1)

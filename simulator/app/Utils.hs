@@ -13,6 +13,8 @@ type Address            = Word32
 
 type Instruction        = Assembly RegisterNum RegisterNum Word32
 
+type InstructionAndPc   = (Instruction, Int)
+
 type Memory             = V.Vector Word32
 type IMemory            = V.Vector Instruction
 type Register           = Word32
@@ -66,11 +68,12 @@ data CPU                = CPU {
                             npc             :: Word32,
                             executionUnits  :: Units,
                             fetchUnit       :: Unit,
-                            decodeUnit      :: Unit
+                            decodeUnit      :: Unit,
+                            branch_predictor :: BranchPredictor
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode) = 
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor) = 
         "InstructionMemory: " ++ show imem ++ "\n" ++
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
@@ -79,7 +82,10 @@ instance Show CPU where
         "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
         "ExecutionUnits: " ++ show exec ++ 
         "FetchUnit: " ++ show fetch ++ "\n" ++
-        "DecodeUnit: " ++ show decode ++ "\n"
+        "DecodeUnit: " ++ show decode ++ "\n" ++
+        "BranchPredictor: " ++ show branch_predictor ++ "\n"
+
+
 
 data UnitType           = IntUnit | MemUnit | BranchUnit
 
@@ -88,14 +94,16 @@ data UnitId             = Int_Unit1 | Int_Unit2 | Mem_Unit | Branch_Unit | Fetch
 data Unit               = Unit { 
                             unitId      :: UnitId,
                             cycles      :: Int,
-                            instruction :: Maybe Instruction,
+                            instruction :: Maybe InstructionAndPc,
                             rs_id       :: RSId,
                             rs_cycle    :: Int, 
-                            buffer      :: V.Vector Instruction
+                            buffer      :: V.Vector InstructionAndPc
                         }  
 
 instance Show Unit where 
-    show (Unit unit_id cycle instrct rsid rscycle buff) = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ "RSCycle: " ++ show rscycle ++ ", Buffer: " ++ show buff ++ "]"
+    show (Unit unit_id cycle instrct  rsid rscycle buff) 
+        = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ 
+            ", RSCycle: " ++ show rscycle ++ ", Buffer: " ++ show buff ++ "]"
 
 data Units              = Units {
                             intUnit1    :: Unit,
@@ -115,7 +123,7 @@ type RSId               = Int
 type RSs                = Map.Map RSId (Int, Maybe RSEntry) 
 
 data RSEntry            = RSEntry {
-                            rs_instruction  :: Instruction,
+                            rs_instruction  :: InstructionAndPc,
                             qd              :: Int,
                             qj              :: Int,
                             qk              :: Int,
@@ -128,7 +136,7 @@ data RSEntry            = RSEntry {
 type ROBId              = Int 
 
 data ROBEntry           = ROBEntry {
-                            rob_instruction :: Instruction,
+                            rob_instruction :: InstructionAndPc,
                             rob_value       :: Word32
                         } deriving Show
 
@@ -146,14 +154,23 @@ data ReservationStation = ReservationStation {
 instance Show ReservationStation where 
     show (ReservationStation entries statuses) = "RS_Entries: \n"  ++ unwords (map (\entry -> show entry ++ "\n") (Map.toList entries)) ++ ", RS_Statuses: " ++ show statuses
 
+data BranchHistory      = B00 | B01 | B10 | B11 deriving (Eq, Show)
 
--- moveUpRSEntries :: ReservationStation -> ReservationStation 
--- moveUpRSEntries rsstation 
---                     = let newRSEntries   = foldr (\rsId rss -> let rsentry = fromMaybe Nothing (Map.lookup rsId rss) in  Map.insert (rsId - 1) rsentry rss) rss [5,4,3,2] 
---                           newRegStatuses = Map.map (\regStat -> if regStat == 0 then regStat else regStat - 1) regs     
---                       in  rsstation {rs_entries = newRSEntries, reg_statuses = newRegStatuses}
---                       where rss = rs_entries rsstation 
---                             regs = reg_statuses rsstation
+instance Ord BranchHistory where 
+    compare branch1 branch2 = (branchBinary branch1) `compare` (branchBinary branch2)
+        where branchBinary branch = case branch of 
+                                            B00 -> 0
+                                            B01 -> 1
+                                            B10 -> 2
+                                            B11 -> 3
+
+data BranchPredictor    = BranchPredictor { 
+                            branch_table :: Map.Map BranchHistory Int,
+                            branch_reg   :: BranchHistory 
+                        } deriving Show
+
+initBranchPredictor :: BranchPredictor
+initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00
 
 initReorderBuffer :: ReorderBuffer
 initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 10]]
@@ -181,7 +198,8 @@ initCPU instructions = let i_mem = V.fromList instructions
                            eunits =  Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)
                            funit = initUnit Fetch_Unit
                            dunit = initUnit Decode_Unit
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit
+                           branch_pred = initBranchPredictor
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -278,5 +296,5 @@ allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
 changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs
 
-euToROB :: (Instruction, Word32) -> ROBEntry
+euToROB :: (InstructionAndPc, Word32) -> ROBEntry
 euToROB (instrct, val) = ROBEntry instrct val

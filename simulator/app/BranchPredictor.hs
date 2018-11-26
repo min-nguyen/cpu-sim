@@ -20,11 +20,14 @@ predictBranch branchPredictor =
         branch_prob = (fromMaybe 1 (Map.lookup branch_reg' branch_table' :: Maybe Int)) :: Int
     in  if (branch_prob <= 2) then False else True
 
-updateBranchPredictor :: Bool -> BranchPredictor -> BranchPredictor
-updateBranchPredictor branched branchPredictor = 
-    let inc x = if x >= 4 then 4 else x + 1
+updateBranchPredictor :: Bool -> InstructionAndPc -> CPU -> (CPU, Bool)
+updateBranchPredictor branched instrctAndPc cpu = 
+    let branchPredictor = branch_predictor cpu
+        inc x = if x >= 4 then 4 else x + 1
         dec x = if x <= 1 then 1 else x - 1
 
+        correctBranch        = fromMaybe True $ Map.lookup (snd instrctAndPc) (predictions branchPredictor)
+        
         branch_reg' = case branch_reg branchPredictor of 
                         B00 -> if branched then B01 else B00
                         B01 -> if branched then B11 else B10 
@@ -32,4 +35,5 @@ updateBranchPredictor branched branchPredictor =
                         B11 -> if branched then B11 else B10 
         branch_table' = Map.adjust (\x -> if branched then inc x else dec x) (branch_reg branchPredictor) (branch_table branchPredictor)
         
-    in  branchPredictor {branch_table = branch_table', branch_reg = branch_reg'} 
+        branchPredictor' = branchPredictor {branch_table = branch_table', branch_reg = branch_reg'} 
+    in  (cpu {branch_predictor = branchPredictor'}, correctBranch)

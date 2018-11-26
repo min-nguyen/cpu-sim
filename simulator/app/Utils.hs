@@ -166,11 +166,12 @@ instance Ord BranchHistory where
 
 data BranchPredictor    = BranchPredictor { 
                             branch_table :: Map.Map BranchHistory Int,
-                            branch_reg   :: BranchHistory 
+                            branch_reg   :: BranchHistory,
+                            predictions  :: Map.Map Int Bool
                         } deriving Show
 
 initBranchPredictor :: BranchPredictor
-initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00
+initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
 
 initReorderBuffer :: ReorderBuffer
 initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 10]]

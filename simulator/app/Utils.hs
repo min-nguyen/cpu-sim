@@ -19,7 +19,7 @@ type Memory             = V.Vector Word32
 type IMemory            = V.Vector Instruction
 type Register           = Word32
 
-data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 deriving (Enum, Show, Eq)
+data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 | R9 | R10 | R11 | R12 | R13 | R14 | R15 deriving (Enum, Show, Eq)
 
 instance Ord RegisterNum where
     compare r_1 r_2 = compare (show r_1) (show r_2) 
@@ -36,12 +36,21 @@ data Registers          = Registers {
                             r4 :: Word32, 
                             r5 :: Word32,
                             r6 :: Word32,
-                            r7 :: Word32
+                            r7 :: Word32,
+                            r8 :: Word32,
+                            r9 :: Word32,
+                            r10 :: Word32,
+                            r11 :: Word32, 
+                            r12 :: Word32, 
+                            r13 :: Word32,
+                            r14 :: Word32,
+                            r15 :: Word32
                         }  
 
 instance Show Registers where 
-    show (Registers r0 r1 r2 r3 r4 r5 r6 r7) = 
-        "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++ "]"
+    show (Registers r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15) = 
+        "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++
+        "[R8: " ++ show r8 ++ " R9: " ++ show r9 ++ " R10 : " ++ show r10 ++ " R11 : " ++ show r11 ++ " R12 : " ++ show r12 ++ " R13 : " ++ show r13 ++ " R14 : " ++ show r14 ++ " R15 : " ++ show r15 ++ "]"
 
 data Assembly dest source immediate
                         = ADD  dest source source
@@ -177,13 +186,14 @@ initReorderBuffer :: ReorderBuffer
 initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 10]]
 
 initRegisterStatuses :: RegisterStatuses
-initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0)]
+initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0), (R8, 0), (R9, 0), (R10, 0), (R11, 0), (R12, 0), (R13, 0), (R14, 0), (R15, 0)]
 
 initReservationStation :: ReservationStation
 initReservationStation = ReservationStation (Map.fromList $ map (\i -> (i, (0, Nothing))) [1..4]) initRegisterStatuses
 
 initRegisters :: Registers 
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
+                          (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
 initUnit :: UnitId -> Unit 
 initUnit unit_id = Unit unit_id 0 Nothing 0 0 V.empty 
@@ -207,36 +217,62 @@ writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRe
 
 writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
 writeRegister registers regNum writeVal
-    = case regNum of R1 -> registers { r1 = writeVal } 
+    = case regNum of R0 -> registers { r0 = writeVal }
+                     R1 -> registers { r1 = writeVal } 
                      R2 -> registers { r2 = writeVal } 
                      R3 -> registers { r3 = writeVal } 
                      R4 -> registers { r4 = writeVal } 
                      R5 -> registers { r5 = writeVal } 
                      R6 -> registers { r6 = writeVal } 
                      R7 -> registers { r7 = writeVal } 
-                     R0 -> registers { r0 = writeVal } 
+                     R8 -> registers { r8 = writeVal }
+                     R9 -> registers { r9 = writeVal } 
+                     R10 -> registers { r10 = writeVal } 
+                     R11 -> registers { r11 = writeVal } 
+                     R12 -> registers { r12 = writeVal } 
+                     R13 -> registers { r13 = writeVal } 
+                     R14 -> registers { r14 = writeVal } 
+                     R15 -> registers { r15 = writeVal } 
 
 readRegister :: Registers -> RegisterNum -> Word32
 readRegister registers regNum 
-    = case regNum of R1 -> r1 registers 
-                     R2 -> r2 registers
-                     R3 -> r3 registers
-                     R4 -> r4 registers
-                     R5 -> r5 registers
-                     R6 -> r6 registers
-                     R7 -> r7 registers
-                     R0 -> r0 registers
+    = case regNum of 
+                    R0 -> r0 registers
+                    R1 -> r1 registers 
+                    R2 -> r2 registers
+                    R3 -> r3 registers
+                    R4 -> r4 registers
+                    R5 -> r5 registers
+                    R6 -> r6 registers
+                    R7 -> r7 registers
+                    R8 -> r8 registers
+                    R9 -> r9 registers 
+                    R10 -> r10 registers
+                    R11 -> r11 registers
+                    R12 -> r12 registers
+                    R13 -> r13 registers
+                    R14 -> r14 registers
+                    R15 -> r15 registers
 
 toRegisterNum :: Word32 -> RegisterNum
 toRegisterNum regNum 
-    = case regNum of    1 -> R1 
+    = case regNum of    
+                        0 -> R0 
+                        1 -> R1 
                         2 -> R2 
                         3 -> R3
                         4 -> R4 
                         5 -> R5 
                         6 -> R6
                         7 -> R7
-                        0 -> R0 
+                        8 -> R0 
+                        9 -> R9
+                        10 -> R10 
+                        11 -> R11
+                        12 -> R12 
+                        13 -> R13 
+                        14 -> R14
+                        15 -> R15
 
 getRegStat :: RegisterNum -> RegisterStatuses -> Maybe Int
 getRegStat regNum regstats 

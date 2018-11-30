@@ -78,11 +78,12 @@ data CPU                = CPU {
                             executionUnits  :: Units,
                             fetchUnit       :: Unit,
                             decodeUnit      :: Unit,
-                            branch_predictor :: BranchPredictor
+                            branch_predictor :: BranchPredictor,
+                            renamer         :: RenamingTable
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor) = 
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer) = 
         "InstructionMemory: " ++ show imem ++ "\n" ++
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
@@ -92,7 +93,8 @@ instance Show CPU where
         "ExecutionUnits: " ++ show exec ++ 
         "FetchUnit: " ++ show fetch ++ "\n" ++
         "DecodeUnit: " ++ show decode ++ "\n" ++
-        "BranchPredictor: " ++ show branch_predictor ++ "\n"
+        "BranchPredictor: " ++ show branch_predictor ++ "\n" ++
+        "Renamer: " ++ show renamer ++ "\n"
 
 
 
@@ -179,6 +181,15 @@ data BranchPredictor    = BranchPredictor {
                             predictions  :: Map.Map Int Bool
                         } deriving Show
 
+
+data RenamingTable      = RenamingTable {
+                            renameTable :: Map.Map RegisterNum RegisterNum
+
+                        } deriving Show
+
+initRenamingTable :: RenamingTable
+initRenamingTable = RenamingTable (Map.fromList [])
+
 initBranchPredictor :: BranchPredictor
 initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
 
@@ -210,7 +221,8 @@ initCPU instructions = let i_mem = V.fromList instructions
                            funit = initUnit Fetch_Unit
                            dunit = initUnit Decode_Unit
                            branch_pred = initBranchPredictor
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred
+                           renamer = initRenamingTable
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -253,6 +265,9 @@ readRegister registers regNum
                     R13 -> r13 registers
                     R14 -> r14 registers
                     R15 -> r15 registers
+
+allRegNums :: [RegisterNum]
+allRegNums = [R0 , R1 , R2 , R3 , R4 , R5 , R6 , R7 , R8 , R9 , R10 , R11 , R12 , R13 , R14 , R15]
 
 toRegisterNum :: Word32 -> RegisterNum
 toRegisterNum regNum 

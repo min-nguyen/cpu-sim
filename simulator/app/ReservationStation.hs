@@ -103,9 +103,13 @@ createRSEntry cpu  statuses   instructionAndPC  =
 
                                                   
                                                     in  (maxCycle, (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False))
-                                    ADDI s1 s2 i -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2, s2]
-                                                        [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s2, s2_status)]
-                                                    in  (maxCycle, RSEntry instructionAndPC s1_status s2_status s2_status v1 i 0 False)
+                                    ADDI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                        [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                        invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                    in  (maxCycle, RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
                                     BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
@@ -164,9 +168,13 @@ updateRSEntry cpu  statuses cycle entry  =
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
                                                     in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
-                                    ADDI d s1 i ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
-                                                        [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
-                                                    in  (RSEntry instructionAndPC d_status s1_status 0 v1 i 0 False)
+                                    ADDI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                        [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                        invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                    in  RSEntry instructionAndPC d_status' s_status' 0 v v 0 False
                                     BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]

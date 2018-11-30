@@ -49,7 +49,7 @@ data Registers          = Registers {
 
 instance Show Registers where 
     show (Registers r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15) = 
-        "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++
+        "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++ "]\n" ++
         "[R8: " ++ show r8 ++ " R9: " ++ show r9 ++ " R10 : " ++ show r10 ++ " R11 : " ++ show r11 ++ " R12 : " ++ show r12 ++ " R13 : " ++ show r13 ++ " R14 : " ++ show r14 ++ " R15 : " ++ show r15 ++ "]"
 
 data Assembly dest source immediate
@@ -183,12 +183,12 @@ data BranchPredictor    = BranchPredictor {
 
 
 data RenamingTable      = RenamingTable {
-                            renameTable :: Map.Map RegisterNum RegisterNum
-
+                            renameTable :: Map.Map RegisterNum RegisterNum,
+                            freeRegisters :: Map.Map RegisterNum Bool
                         } deriving Show
 
 initRenamingTable :: RenamingTable
-initRenamingTable = RenamingTable (Map.fromList [])
+initRenamingTable = RenamingTable (Map.fromList []) (Map.fromList (zip allRegNums (replicate 16 True)))
 
 initBranchPredictor :: BranchPredictor
 initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
@@ -317,6 +317,7 @@ instructionToExecutionUnit instruction =
                             LW _ _ _-> MemUnit 
                             LI _ _ -> MemUnit 
                             SW _ _ -> MemUnit 
+
 
 
 allocateRegStats :: RegisterStatuses -> Instruction -> RegisterStatuses

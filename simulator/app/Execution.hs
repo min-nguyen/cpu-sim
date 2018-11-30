@@ -11,6 +11,8 @@ import ReservationStation
 import Data.Ord
 import Data.List 
 import ReorderBuffer 
+import Renamer
+
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
@@ -39,8 +41,8 @@ updateExecUnits cpu =
                                 rsentries' = allocateRSEntry rsentries rsId
                                 regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer \n") $ allocateRegStats regstats instrct --
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
-
-                                cpu'' = cpu' { rs_station = rsStation'}
+                           
+                                cpu'' = updateFreeRegisters instrct $ cpu' { rs_station = rsStation'}
                                 cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 = unit'}}  
                                                                 Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit'}}  
                                                                 Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit'}}  

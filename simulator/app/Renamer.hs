@@ -33,6 +33,9 @@ renameInstructionRegs instrct cpu =
         BEQ  s1 s2 i -> let s1' = remapRegister s1 cpu 
                             s2' = remapRegister s2 cpu
                         in  (cpu, BEQ s1' s2' i)
+        BLT  s1 s2 i -> let s1' = remapRegister s1 cpu 
+                            s2' = remapRegister s2 cpu
+                        in  (cpu, BLT s1' s2' i)
         LW   d s i  ->  let (cpu', d', available) = renameRegister d cpu
                             s' = remapRegister s cpu'
                         in  (cpu', ADDI d' s' i)
@@ -70,6 +73,7 @@ updateFreeRegisters instruction cpu =
         free_regs' = case instruction of ADD d _ _ -> Map.insert d True free_regs
                                          ADDI d _ _-> Map.insert d True free_regs
                                          BEQ _ _ _-> free_regs
+                                         BLT _ _ _ -> free_regs
                                          LW d _ _-> Map.insert d True free_regs
                                          LI d _ -> Map.insert d True free_regs
                                          SW _ _ -> free_regs

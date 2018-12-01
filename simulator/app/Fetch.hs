@@ -22,17 +22,31 @@ import Data.Map.Strict as Map
 updateFetch :: CPU -> CPU
 updateFetch cpu = let cpu' = fetch cpu current_pc
                   in cpu'
-                  where current_pc = if npc cpu == pc cpu then fromIntegral (pc cpu) else fromIntegral $ npc cpu
+                  where current_pc = if npc cpu == pc cpu 
+                                     then fromIntegral (pc cpu) 
+                                     else fromIntegral $ npc cpu
 
 
 fetch :: CPU -> Int -> CPU 
 fetch cpu current_pc = 
-        if fetchN == 0 || freeBufferSpace == 0
+        if current_pc >= V.length (i_memory cpu)
         then cpu
         else 
         let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
         in      case fst nextInstruction of 
                         BEQ s1 s2 i -> let (current_pc', branched) 
+                                                        = if   predictBranch (branch_predictor cpu)
+                                                          then (i, True)
+                                                          else (fromIntegral (current_pc + 1), False) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
+                                           buffer' = buff V.++ (V.fromList [nextInstruction])
+                                           fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
+                                           branchPred = (branch_predictor cpu) {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor cpu)) }
+                                           cpu' = cpu { fetchUnit = tick fUnit , 
+                                                pc  = (fromIntegral $ current_pc'),
+                                                npc = (fromIntegral $ current_pc'),
+                                                branch_predictor = branchPred}
+                                       in  fetch cpu' (fromIntegral $ current_pc')
+                        BLT s1 s2 i -> let (current_pc', branched) 
                                                         = if   predictBranch (branch_predictor cpu)
                                                           then (i, True)
                                                           else (fromIntegral (current_pc + 1), False) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
@@ -52,11 +66,6 @@ fetch cpu current_pc =
                                                 npc = (fromIntegral $ current_pc')}
                                        in  fetch cpu' (fromIntegral $ current_pc')
 
-        where   fetchN = if freeBufferSpace > endlen 
-                                then endlen
-                                else freeBufferSpace
-                freeBufferSpace = 4 - V.length buff
-                endlen = (V.length (i_memory cpu) - current_pc)
-                buff = buffer (fetchUnit cpu)
+        where   buff = buffer (fetchUnit cpu)
 
                                        

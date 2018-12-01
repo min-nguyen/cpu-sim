@@ -63,12 +63,12 @@ parseLW = LW <$ string "LW" <* space <*> parseRegister <* space <*> parseRegiste
 parseJALR :: Parser Instruction
 parseJALR = JALR <$ string "JALR" <*> parseRegister <* space <*> parseRegister
 
-parseBLTZ :: Parser Instruction
-parseBLTZ = BLTZ <$ string "BLTZ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
+parseBLT :: Parser Instruction
+parseBLT = BLT <$ string "BLT" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseInstruction :: Parser Instruction
 parseInstruction =  try parseLW <|> try parseLI <|> try parseSW <|> try parseADD <|> try parseADDI <|> try parseBEQ <|> 
-                    try parseBLTZ <|> try parseJALR
+                    try parseBLT <|> try parseJALR
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof

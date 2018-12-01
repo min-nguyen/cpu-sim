@@ -60,7 +60,7 @@ data Assembly dest source immediate
                         | LI   dest   immediate
                         | SW   source immediate
                         | JALR dest source
-                        | BLTZ dest source immediate
+                        | BLT  source source immediate
                         deriving Show
 
 data InstructionResult  = InstructionResult { 
@@ -312,7 +312,7 @@ instructionToExecutionUnit instruction =
         case instruction of ADD _ _ _ -> IntUnit
                             ADDI _ _ _-> IntUnit 
                             BEQ _ _ _-> BranchUnit
-                            BLTZ _ _ _-> BranchUnit
+                            BLT _ _ _-> BranchUnit
                             JALR _ _ -> BranchUnit
                             LW _ _ _-> MemUnit 
                             LI _ _ -> MemUnit 
@@ -326,6 +326,7 @@ allocateRegStats regstats instrct =
             ADD  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             ADDI s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
             BEQ  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            BLT  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
             LW   s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
             LI   d i     -> (setRegStat d 0) regstats
             SW   d i     -> (setRegStat d 0) regstats
@@ -338,6 +339,7 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
             ADD  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             ADDI s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status)  regstats
             BEQ  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            BLT  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
             LW   s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
             LI   d i     -> (f d rsid d_status) regstats
             SW   d i     -> (f d rsid d_status) regstats

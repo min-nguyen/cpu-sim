@@ -51,7 +51,7 @@ popReorderBuffer cpu =
 
 commitReorderBuffer :: ROBEntry -> ReorderBuffer -> CPU -> (CPU, Bool)            
 commitReorderBuffer entry reorderBuff cpu =
-    let lastRobId    = fst $ last ( rob_buffer reorderBuff)
+    let lastRobId    = fst (last ( rob_buffer reorderBuff)) + 1
 
         reorderBuff' = ReorderBuffer $ tail (rob_buffer reorderBuff) ++ [(lastRobId, Nothing)]
         cpu' = case entry of 
@@ -61,7 +61,15 @@ commitReorderBuffer entry reorderBuff cpu =
                                                  in  (cpu {registers = registers', rob = reorderBuff'}, True)
             ROBEntry (BEQ  s1 s2 i, pc) value -> let (cpu', correctBranch) = case value of 0 -> (updateBranchPredictor False (rob_instruction entry) cpu)
                                                                                            1 -> (updateBranchPredictor True (rob_instruction entry) cpu)
-                                                     npc' = if correctBranch then npc cpu' else ( case value of 0 -> fromIntegral $ snd $ rob_instruction entry 
+                                                     npc' = if correctBranch then npc cpu' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
+                                                                                                                1 -> i)
+                                                     cpu'' = (cpu' {npc = npc'})
+                                                 in  if correctBranch 
+                                                     then (cpu'' {rob = reorderBuff'}, True)
+                                                     else (flushPipeline cpu'', False) -- << ---
+            ROBEntry (BLT  s1 s2 i, pc) value -> let (cpu', correctBranch) = case value of 0 -> (updateBranchPredictor False (rob_instruction entry) cpu)
+                                                                                           1 -> (updateBranchPredictor True (rob_instruction entry) cpu)
+                                                     npc' = if correctBranch then npc cpu' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
                                                                                                                 1 -> i)
                                                      cpu'' = (cpu' {npc = npc'})
                                                  in  if correctBranch 

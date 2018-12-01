@@ -39,7 +39,7 @@ updateExecUnits cpu =
                                 unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                 rsentries' = allocateRSEntry rsentries rsId
-                                regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer \n") $ allocateRegStats regstats instrct --
+                                regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer with PC " ++ show rsCycle ++ " \n") $ allocateRegStats regstats instrct --
                                 rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
                            
                                 cpu'' = updateFreeRegisters instrct $ cpu' { rs_station = rsStation'}
@@ -71,6 +71,12 @@ execInstruction cpu (BEQ source_a source_b i, pc)
       in case () of 
                 _ | a == b        -> ((BEQ source_a source_b i, pc), 1)
                 _                 -> ((BEQ source_a source_b i, pc), 0)
+execInstruction cpu (BLT source_a source_b i, pc)     
+    = let regs   = registers cpu
+          [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
+      in case () of 
+                _ | a < b         -> ((BLT source_a source_b i, pc), 1)
+                _                 -> ((BLT source_a source_b i, pc), 0)
 execInstruction cpu (LW dest source i, pc)   
     = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
       in  ((LW dest source i, pc), loadedWord)

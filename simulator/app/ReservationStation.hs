@@ -120,6 +120,12 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                         [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
                                                     in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' s2_status' v1 v2 i False) )
+                                    BLT  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' s2_status' v1 v2 i False) )
                                     LW   d s1 i ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
 
@@ -143,6 +149,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                   Just anEntry -> case fst (rs_instruction anEntry) of 
                                                                     ADD  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
                                                                     ADDI d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
+                                                                    BLT  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     BEQ  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     LW   d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
                                                                     LI   d i     -> zip [d] [qd anEntry]
@@ -186,6 +193,13 @@ updateRSEntry cpu  statuses cycle entry  =
                                                         invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
                                                     in  (RSEntry instructionAndPC 0 s1_status' s2_status' v1 v2 i False) 
+                                    BLT  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                    in  RSEntry instructionAndPC 0 s1_status' s2_status' v1 v2 i False
+                                    
                                     LW   d s1 i  -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
                                                         [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
 
@@ -212,6 +226,7 @@ updateRSEntry cpu  statuses cycle entry  =
                                                                     ADD  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
                                                                     ADDI d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
                                                                     BEQ  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
+                                                                    BLT  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     LW   d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
                                                                     LI   d i     -> zip [d] [qd anEntry]
                                                                     SW   d i     -> zip [d] [qd anEntry]

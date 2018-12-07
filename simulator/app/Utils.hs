@@ -56,10 +56,13 @@ data Assembly dest source immediate
                         = ADD  dest source source
                         | ADDI source source immediate
                         | BEQ  source source immediate 
-                        | LW   source source immediate
+                        | LW   dest source 
                         | LI   dest   immediate
-                        | SW   source immediate
-                        | JALR dest source
+                        | SW   source dest
+                        | SI   source immediate
+                        | CMP  dest source source
+                        | LTH  dest source source
+                        | JMP  immediate
                         | BLT  source source immediate
                         deriving Show
 
@@ -247,7 +250,7 @@ writeRegister registers regNum writeVal
                      R15 -> registers { r15 = writeVal } 
 
 readRegister :: Registers -> RegisterNum -> Word32
-readRegister registers regNum 
+readRegister registers regNum
     = case regNum of 
                     R0 -> r0 registers
                     R1 -> r1 registers 
@@ -313,10 +316,13 @@ instructionToExecutionUnit instruction =
                             ADDI _ _ _-> IntUnit 
                             BEQ _ _ _-> BranchUnit
                             BLT _ _ _-> BranchUnit
-                            JALR _ _ -> BranchUnit
-                            LW _ _ _-> MemUnit 
+                            LTH _ _ _ -> IntUnit
+                            CMP _ _ _ -> IntUnit
+                            JMP  _ -> BranchUnit
+                            LW _ _ -> MemUnit 
                             LI _ _ -> MemUnit 
                             SW _ _ -> MemUnit 
+                            SI _ _ -> MemUnit
 
 
 
@@ -324,26 +330,32 @@ allocateRegStats :: RegisterStatuses -> Instruction -> RegisterStatuses
 allocateRegStats regstats instrct = 
     case instrct of 
             ADD  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            CMP  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             ADDI s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            LTH   d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             BEQ  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
             BLT  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            LW   s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            LW   s1 s2   -> (setRegStat s1 0 . setRegStat s2 0) regstats
             LI   d i     -> (setRegStat d 0) regstats
-            SW   d i     -> (setRegStat d 0) regstats
-            JALR d s     -> (setRegStat s 0 . setRegStat d 0) regstats
+            SW   s1 s2   -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            SI   d i     -> (setRegStat d 0) regstats
+            JMP i        ->  regstats
 
 deallocateRegStats :: RegisterStatuses -> Instruction -> RSId -> Int -> Int -> Int -> RegisterStatuses
 deallocateRegStats regstats instrct rsid d_status s1_status s2_status = 
     let f = \reg rsID status reg_stats -> if status == 0 then setRegStat reg rsID reg_stats else reg_stats
     in case instrct of 
             ADD  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            CMP  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats 
             ADDI s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status)  regstats
+            LTH   d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             BEQ  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
             BLT  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
-            LW   s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            LW   s1 s2   -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
             LI   d i     -> (f d rsid d_status) regstats
-            SW   d i     -> (f d rsid d_status) regstats
-            JALR d s     -> (f s rsid s1_status . f d rsid d_status) regstats
+            SW   s1 s2   -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            SI   d i     -> (f d rsid d_status) regstats
+            JMP  i     ->  regstats
 
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
@@ -353,3 +365,18 @@ changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rs
 
 euToROB :: (InstructionAndPc, Word32) -> ROBEntry
 euToROB (instrct, val) = ROBEntry instrct val
+
+sameRegs :: Instruction -> Bool
+sameRegs instrct = 
+    case instrct of 
+            ADD  d s1 s2 -> s1 == d || s2 == d
+            CMP  d s1 s2 -> s1 == d || s2 == d
+            ADDI s1 s2 i -> s1 == s2
+            LTH   d s1 s2 -> s1 == d || s2 == d
+            BEQ  s1 s2 i -> False
+            BLT  s1 s2 i -> False
+            LW   s1 s2   -> s1 == s2
+            LI   d i     -> False
+            SW   s1 s2   -> False
+            SI   d i     -> False
+            JMP i        -> False

@@ -33,7 +33,8 @@ fetch cpu current_pc =
         then cpu
         else 
         let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
-        in      case fst nextInstruction of 
+        in   trace (show $ fst nextInstruction) $
+             case fst nextInstruction of 
                         BEQ s1 s2 i -> let (current_pc', branched) 
                                                         = if   predictBranch (branch_predictor cpu)
                                                           then (i, True)
@@ -45,7 +46,7 @@ fetch cpu current_pc =
                                                 pc  = (fromIntegral $ current_pc'),
                                                 npc = (fromIntegral $ current_pc'),
                                                 branch_predictor = branchPred}
-                                       in  fetch cpu' (fromIntegral $ current_pc')
+                                       in fetch cpu' (fromIntegral $ current_pc')
                         BLT s1 s2 i -> let (current_pc', branched) 
                                                         = if   predictBranch (branch_predictor cpu)
                                                           then (i, True)

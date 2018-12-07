@@ -10,6 +10,7 @@ import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Utils
 import Data.List
+import Renamer
 import Data.Ord
 import BranchPredictor 
 
@@ -54,8 +55,13 @@ commitReorderBuffer entry reorderBuff cpu =
     let lastRobId    = fst (last ( rob_buffer reorderBuff)) + 1
 
         reorderBuff' = ReorderBuffer $ tail (rob_buffer reorderBuff) ++ [(lastRobId, Nothing)]
-        cpu' = case entry of 
+       
+        cpu'' = case entry of 
             ROBEntry (ADD  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu) d value 
+                                                 in  (cpu {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (LTH  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu) d value 
+                                                 in  (cpu {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (CMP  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu) d value 
                                                  in  (cpu {registers = registers', rob = reorderBuff'}, True)
             ROBEntry (ADDI s1 s2 i, pc) value -> let registers' = writeRegister (registers cpu) s1 value 
                                                  in  (cpu {registers = registers', rob = reorderBuff'}, True)
@@ -75,11 +81,13 @@ commitReorderBuffer entry reorderBuff cpu =
                                                  in  if correctBranch 
                                                      then (cpu'' {rob = reorderBuff'}, True)
                                                      else (flushPipeline cpu'', False) -- << ---
-            ROBEntry (LW   d s1 i, pc) value -> let registers' = writeRegister (registers cpu) d value 
+            ROBEntry (LW   d s1  , pc) value -> let registers' = writeRegister (registers cpu) d value 
                                                 in  (cpu {registers = registers', rob = reorderBuff'}, True )
             ROBEntry (LI   d i, pc) value    -> let registers' = writeRegister (registers cpu) d value 
                                                 in  (cpu {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (SW   d i, pc) value    -> let memory' = writeMemory cpu (fromIntegral i) d
+            ROBEntry (SW  s1 s2, pc) value   -> let memory' = writeMemory cpu (fromIntegral value) s2
                                                 in  (cpu {d_memory = memory', rob = reorderBuff'} , True)
-            -- (JALR d s, value)     -> 
-    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\nCPU AFTER : \n" ++ show cpu' ++ "\n\n") cpu'
+            ROBEntry (SI   d i, pc) value    -> let memory' = writeMemory cpu (fromIntegral i) d
+                                                in  (cpu {d_memory = memory', rob = reorderBuff'} , True)
+            ROBEntry (JMP i, pc) value       -> (cpu {npc = i, rob = reorderBuff'}, True) 
+    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\nCPU AFTER : \n" ++ show cpu'' ++ "\n\n") cpu''

@@ -33,17 +33,29 @@ parseWord32 = (fromIntegral <$> decimal)
 
 parseRegister :: Parser RegisterNum
 parseRegister = 
-    try (R0 <$ string "R0") <|>
+    try (R10 <$ string "R10") <|>
+    try (R11 <$ string "R11") <|>
+    try (R12 <$ string "R12") <|>
+    try (R13 <$ string "R13") <|>
+    try (R14 <$ string "R14") <|>
+    try (R15 <$ string "R15") <|>
     try (R1 <$ string "R1") <|>
+    try (R0 <$ string "R0") <|>
     try (R2 <$ string "R2") <|>
     try (R3 <$ string "R3") <|>
     try (R4 <$ string "R4") <|>
     try (R5 <$ string "R5") <|>
     try (R6 <$ string "R6") <|>
-    try (R7 <$ string "R7")
+    try (R7 <$ string "R7") <|>
+    try (R8 <$ string "R8") <|>
+    try (R9 <$ string "R9") 
+
 
 parseSW :: Parser Instruction 
-parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseWord32
+parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseRegister
+
+parseSI :: Parser Instruction 
+parseSI = SI <$ string "SI" <* space <*> parseRegister <* space <*> parseWord32
 
 parseLI :: Parser Instruction
 parseLI = LI <$ string "LI" <* space <*> parseRegister <* space <*> parseWord32
@@ -58,17 +70,24 @@ parseBEQ :: Parser Instruction
 parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
 parseLW :: Parser Instruction
-parseLW = LW <$ string "LW" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
+parseLW = LW <$ string "LW"  <* space <*> parseRegister <* space <*> parseRegister 
 
-parseJALR :: Parser Instruction
-parseJALR = JALR <$ string "JALR" <*> parseRegister <* space <*> parseRegister
+parseLTH :: Parser Instruction
+parseLTH = LTH <$ string "LTH" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+
+parseJMP :: Parser Instruction
+parseJMP = JMP <$ string "JMP" <*> parseWord32 
 
 parseBLT :: Parser Instruction
 parseBLT = BLT <$ string "BLT" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
 
+parseCMP :: Parser Instruction
+parseCMP = CMP <$ string "CMP" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+
+
 parseInstruction :: Parser Instruction
 parseInstruction =  try parseLW <|> try parseLI <|> try parseSW <|> try parseADD <|> try parseADDI <|> try parseBEQ <|> 
-                    try parseBLT <|> try parseJALR
+                    try parseBLT <|> try parseJMP <|> try parseLTH <|> try parseCMP <|> try parseSI
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof

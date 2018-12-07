@@ -17,7 +17,7 @@ updateDecode cpu =
         decodebuff = (buffer decoder) V.++ V.take fetchN (buffer fetcher)
         fetchbuff = V.drop fetchN (buffer fetcher)
         (fetcher', decoder') = (fetcher {buffer = fetchbuff} , decoder { buffer = decodebuff })
-    in  trace ("Free buffer space : " ++ show freeBufferSpace ++ "\n") $ cpu { fetchUnit = fetcher', decodeUnit = tick decoder' } 
+    in  cpu { fetchUnit = fetcher', decodeUnit = tick decoder' } 
     where   fetchN = if freeBufferSpace > 0 && freeBufferSpace < 5
                      then freeBufferSpace
                      else 0

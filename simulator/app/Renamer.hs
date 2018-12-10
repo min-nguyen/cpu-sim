@@ -76,6 +76,7 @@ renameRegister reg_num cpu =
             Nothing -> let rename_table' = Map.insert reg_num reg_num rename_table
                        in trace ("no free reg for : " ++ show reg_num) $ (cpu {renamer = (renamer cpu) {renameTable = rename_table'}}, reg_num, False)
             Just r' -> let rename_table' = Map.insert reg_num r' rename_table
+                          
                            free_regs'    = Map.insert reg_num False free_regs
                        in (cpu {renamer = (renamer cpu) {renameTable = rename_table', freeRegisters = free_regs'}}, r', True)
     where rename_table = renameTable (renamer cpu)   

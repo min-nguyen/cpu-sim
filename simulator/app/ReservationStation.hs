@@ -17,9 +17,9 @@ import Renamer
 --                             qd              :: Int,
 --                             qj              :: Int,
 --                             qk              :: Int,
---                             vj              :: Word32,
---                             vk              :: Word32,
---                             addr            :: Word32,
+--                             vj              :: Int,
+--                             vk              :: Int,
+--                             addr            :: Int,
 --                             busy            :: Bool
 --                         } deriving Show
 
@@ -97,7 +97,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
         higherPriorityEntries = map (snd . snd) $ filter (\(rsId, (cyc, ent)) -> cyc < maxCycle) $ sortBy (comparing (\(rsId, (cyc, ent)) -> cyc))  (Map.toList resentries)
         
         (cpu', renamedInstruction) = renameInstructionRegs instruction cpu
-        renamedInstructionAndPc = (renamedInstruction, snd instructionAndPC)
+        renamedInstructionAndPc = instructionAndPC --(renamedInstruction, snd instructionAndPC)
     in              case renamedInstruction of 
                                     ADD  d s1 s2 -> let 
                                                         [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]

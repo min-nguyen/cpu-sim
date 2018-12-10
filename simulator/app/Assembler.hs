@@ -22,14 +22,14 @@ import Debug.Trace
 --                         | J    immediate
 --                         | BLTZ dest source immediate
 
--- type AssemblyExpr = AssemblyExpr' RegisterNum RegisterNum Word32 
+-- type AssemblyExpr = AssemblyExpr' RegisterNum RegisterNum Int 
 
 type Parser = Parsec Void String
 
 
 
-parseWord32 :: Parser Word32
-parseWord32 = (fromIntegral <$> decimal) 
+parseInt :: Parser Int
+parseInt = (decimal) 
 
 parseRegister :: Parser RegisterNum
 parseRegister = 
@@ -55,19 +55,19 @@ parseSW :: Parser Instruction
 parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseRegister
 
 parseSI :: Parser Instruction 
-parseSI = SI <$ string "SI" <* space <*> parseRegister <* space <*> parseWord32
+parseSI = SI <$ string "SI" <* space <*> parseRegister <* space <*> parseInt
 
 parseLI :: Parser Instruction
-parseLI = LI <$ string "LI" <* space <*> parseRegister <* space <*> parseWord32
+parseLI = LI <$ string "LI" <* space <*> parseRegister <* space <*> parseInt
 
 parseADD :: Parser Instruction
 parseADD = ADD <$ string "ADD" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 
 parseADDI :: Parser Instruction
-parseADDI = ADDI <$ string "ADDI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
+parseADDI = ADDI <$ string "ADDI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
 
 parseBEQ :: Parser Instruction
-parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
+parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
 
 parseLW :: Parser Instruction
 parseLW = LW <$ string "LW"  <* space <*> parseRegister <* space <*> parseRegister 
@@ -76,10 +76,10 @@ parseLTH :: Parser Instruction
 parseLTH = LTH <$ string "LTH" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 
 parseJMP :: Parser Instruction
-parseJMP = JMP <$ string "JMP" <*> parseWord32 
+parseJMP = JMP <$ string "JMP" <*> parseInt 
 
 parseBLT :: Parser Instruction
-parseBLT = BLT <$ string "BLT" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseWord32
+parseBLT = BLT <$ string "BLT" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
 
 parseCMP :: Parser Instruction
 parseCMP = CMP <$ string "CMP" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister

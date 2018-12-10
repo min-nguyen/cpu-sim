@@ -25,17 +25,6 @@ updateCPU cpu =
         cpu5 = updateROB cpu4
     in  cpu5
 
--- updateUnit ::      (toSelf -> fromPrev -> fromNext -> fromMem -> (state, toPrev, toMem))
---                 -> (state -> (toSelf, toNext)) -- splitter
---                 -> state 
---                 -> (Signal fromPrev, Signal fromNext, Signal fromMem)
---                 -> (Signal toPrev,   Signal toNext,   Signal toMem) 
--- updateUnit update splitter initialState (fromPrev, fromNext, fromMem) =
---     (toPrev, toNext, toMem) where 
---         (newState, toPrev, toMem) = update  toSelf  fromPrev  fromNext fromMem 
---         (toSelf, toNext) = splitter initialState
-        -- newState        = 
-
 main :: IO ()
 main = do 
     filename <- getArgs
@@ -43,5 +32,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> (x a)) cpu (replicate 200 updateCPU) 
+    let cpu' = foldr (\x a -> (x a)) cpu (replicate 400 updateCPU) 
     print cpu'

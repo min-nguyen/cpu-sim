@@ -8,16 +8,16 @@ import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 
-type Offset             = Word32
-type Address            = Word32
+type Offset             = Int
+type Address            = Int
 
-type Instruction        = Assembly RegisterNum RegisterNum Word32
+type Instruction        = Assembly RegisterNum RegisterNum Int
 
 type InstructionAndPc   = (Instruction, Int)
 
-type Memory             = V.Vector Word32
+type Memory             = V.Vector Int
 type IMemory            = V.Vector Instruction
-type Register           = Word32
+type Register           = Int
 
 data RegisterNum        = R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 | R9 | R10 | R11 | R12 | R13 | R14 | R15 deriving (Enum, Show, Eq)
 
@@ -29,28 +29,63 @@ instance Ord RegisterNum where
 -- data Status             = Ready | Stalled  deriving Show
 
 data Registers          = Registers {
-                            r0 :: Word32,
-                            r1 :: Word32,
-                            r2 :: Word32,
-                            r3 :: Word32, 
-                            r4 :: Word32, 
-                            r5 :: Word32,
-                            r6 :: Word32,
-                            r7 :: Word32,
-                            r8 :: Word32,
-                            r9 :: Word32,
-                            r10 :: Word32,
-                            r11 :: Word32, 
-                            r12 :: Word32, 
-                            r13 :: Word32,
-                            r14 :: Word32,
-                            r15 :: Word32
+                            r0 :: Int,
+                            r1 :: Int,
+                            r2 :: Int,
+                            r3 :: Int, 
+                            r4 :: Int, 
+                            r5 :: Int,
+                            r6 :: Int,
+                            r7 :: Int,
+                            r8 :: Int,
+                            r9 :: Int,
+                            r10 :: Int,
+                            r11 :: Int, 
+                            r12 :: Int, 
+                            r13 :: Int,
+                            r14 :: Int,
+                            r15 :: Int
                         }  
 
 instance Show Registers where 
     show (Registers r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15) = 
         "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++ "]\n" ++
         "[R8: " ++ show r8 ++ " R9: " ++ show r9 ++ " R10 : " ++ show r10 ++ " R11 : " ++ show r11 ++ " R12 : " ++ show r12 ++ " R13 : " ++ show r13 ++ " R14 : " ++ show r14 ++ " R15 : " ++ show r15 ++ "]"
+
+data Asm dest source immediate =
+    -- Memory
+    MoveI        dest immediate                     -- r <- val
+    -- | MoveLabel    RegIdx LabelAddr                                    -- r <- *label
+    | Move         dest source                   -- r <- [from]
+    | LoadIdx      dest source immediate   -- r <- [[base] + offset]
+    | LoadBaseIdx  dest source source -- r <- [[base] + [R_offset]]
+    | StoreIdx     dest source immediate   -- r -> [[base] + offset]
+    | StoreBaseIdx dest source source -- r -> [[base] + [R_offset]]
+    -- Arithmetic/Logic
+    | Add  dest source source -- r <- [x] + [y]
+    | AddI dest source immediate    -- r <- [x] + i
+    | Sub  dest source source -- r <- [x] - [y]
+    | SubI dest source immediate     -- r <- [x] - i
+    | Mult dest source source -- r <- [x] * [y]
+    | Div  dest source source -- r <- [x] / [y]
+    | Eq   dest source source -- r <- [x] == [y]
+    | Lt   dest source source -- r <- [x] < [y]
+    | Or   dest source source -- r <- [x] || [y]
+    | And  dest source source -- r <- [x] && [y]
+    | Not  dest source              -- r <- ![x]
+    -- Branching
+    | B  immediate              -- Unconditional branch to label.
+    | BT dest immediate -- Branch to label if r == 1
+    | BF dest immediate -- Branch to label if r == 0
+    | Ret                                -- Branch to address in link register.
+    | SysCall                            -- Terminates execution.
+    -- Debugging
+    | Print  source -- Print value in a register.
+    | PrintC source -- Print value in a register as an ASCII character.
+    | PrintLn                -- Print a newline.
+    -- Extra
+    | NoOp
+    | Label immediate
 
 data Assembly dest source immediate
                         = ADD  dest source source
@@ -67,7 +102,7 @@ data Assembly dest source immediate
                         deriving Show
 
 data InstructionResult  = InstructionResult { 
-                            output :: (Instruction, Word32)
+                            output :: (Instruction, Int)
                         } 
 
 data CPU                = CPU {
@@ -76,8 +111,8 @@ data CPU                = CPU {
                             rs_station      :: ReservationStation,
                             rob             :: ReorderBuffer,
                             registers       :: Registers,
-                            pc              :: Word32,
-                            npc             :: Word32,
+                            pc              :: Int,
+                            npc             :: Int,
                             executionUnits  :: Units,
                             fetchUnit       :: Unit,
                             decodeUnit      :: Unit,
@@ -141,9 +176,9 @@ data RSEntry            = RSEntry {
                             qd              :: Int,
                             qj              :: Int,
                             qk              :: Int,
-                            vj              :: Word32,
-                            vk              :: Word32,
-                            addr            :: Word32,
+                            vj              :: Int,
+                            vk              :: Int,
+                            addr            :: Int,
                             busy            :: Bool
                         } deriving (Show)
 
@@ -151,7 +186,7 @@ type ROBId              = Int
 
 data ROBEntry           = ROBEntry {
                             rob_instruction :: InstructionAndPc,
-                            rob_value       :: Word32
+                            rob_value       :: Int
                         } deriving Show
 
 data ReorderBuffer      = ReorderBuffer { 
@@ -230,7 +265,7 @@ initCPU instructions = let i_mem = V.fromList instructions
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
 
-writeRegister :: Registers -> RegisterNum -> Word32 -> Registers
+writeRegister :: Registers -> RegisterNum -> Int -> Registers
 writeRegister registers regNum writeVal
     = case regNum of R0 -> registers { r0 = writeVal }
                      R1 -> registers { r1 = writeVal } 
@@ -249,7 +284,7 @@ writeRegister registers regNum writeVal
                      R14 -> registers { r14 = writeVal } 
                      R15 -> registers { r15 = writeVal } 
 
-readRegister :: Registers -> RegisterNum -> Word32
+readRegister :: Registers -> RegisterNum -> Int
 readRegister registers regNum
     = case regNum of 
                     R0 -> r0 registers
@@ -272,7 +307,7 @@ readRegister registers regNum
 allRegNums :: [RegisterNum]
 allRegNums = [R0 , R1 , R2 , R3 , R4 , R5 , R6 , R7 , R8 , R9 , R10 , R11 , R12 , R13 , R14 , R15]
 
-toRegisterNum :: Word32 -> RegisterNum
+toRegisterNum :: Int -> RegisterNum
 toRegisterNum regNum 
     = case regNum of    
                         0 -> R0 
@@ -363,7 +398,7 @@ allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
 changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs
 
-euToROB :: (InstructionAndPc, Word32) -> ROBEntry
+euToROB :: (InstructionAndPc, Int) -> ROBEntry
 euToROB (instrct, val) = ROBEntry instrct val
 
 sameRegs :: Instruction -> Bool

@@ -45,7 +45,7 @@ updateExecUnits cpu =
                                     regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer with PC " ++ show rsCycle ++ " \n") $ allocateRegStats regstats instrct --
                                     rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
                                     
-                                    cpu'' =  updateFreeRegisters instrct $ cpu' { rs_station = rsStation'}
+                                    cpu'' =  cpu' { rs_station = rsStation'}
                                     cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 =  unit' {cycles = (cycles unit') - 1 }}}  
                                                                     Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit' {cycles = (cycles unit') - 1 }}}  
                                                                     Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit' {cycles = (cycles unit') - 1 }}}  
@@ -62,11 +62,12 @@ updateExecUnits cpu =
 
     in  cpu' 
 
-execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, Word32)
+execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, Int)
 execInstruction cpu (ADD dest source_a source_b, pc)     
     = let regs = registers cpu
-          val  = sum $ map (readRegister regs) [source_a, source_b] 
-      in  ((ADD dest source_a source_b, pc), val)
+          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          val = source_a_val + source_b_val
+      in  trace ("ADD " ++ show source_a ++ " and " ++ show source_b ++ " is " ++ show val ++ "\n") ((ADD dest source_a source_b, pc), val)
 execInstruction cpu (LTH dest source_a source_b, pc)     
     = let regs = registers cpu
           val  = if (readRegister regs source_a) < (readRegister regs source_b) then 1 else 0

@@ -46,7 +46,7 @@ fetch cpu current_pc =
                                                 pc  = (fromIntegral $ current_pc'),
                                                 npc = (fromIntegral $ current_pc'),
                                                 branch_predictor = branchPred}
-                                       in fetch cpu' (fromIntegral $ current_pc')
+                                       in  cpu' 
                         BLT s1 s2 i -> let (current_pc', branched) 
                                                         = if   predictBranch (branch_predictor cpu)
                                                           then (i, True)
@@ -58,7 +58,7 @@ fetch cpu current_pc =
                                                 pc  = (fromIntegral $ current_pc'),
                                                 npc = (fromIntegral $ current_pc'),
                                                 branch_predictor = branchPred}
-                                       in  fetch cpu' (fromIntegral $ current_pc')
+                                       in   cpu' 
                         _           -> let current_pc' = fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
                                            buffer' = buff V.++ (V.fromList [nextInstruction])
                                            fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }

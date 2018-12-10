@@ -25,6 +25,7 @@ dependencies:
 - clash-ghc
 - deepseq
 - data-default
+- text
 - template-haskell
 - megaparsec
 - containers

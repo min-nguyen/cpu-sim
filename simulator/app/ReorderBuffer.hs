@@ -4,7 +4,7 @@ import Lib
 import Data.Word
 import Data.Maybe
 import Data.Bits
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import Debug.Trace
 import qualified Data.Map.Strict as Map
@@ -57,37 +57,99 @@ commitReorderBuffer entry reorderBuff cpu =
         reorderBuff' = ReorderBuffer $ tail (rob_buffer reorderBuff) ++ [(lastRobId, Nothing)]
         cpu' = updateFreeRegisters (fst $ rob_instruction entry) cpu
         cpu'' = case entry of 
-            ROBEntry (ADD  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu') d value 
-                                                 in  (cpu' {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (LTH  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu') d value 
-                                                 in  (cpu' {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (CMP  d s1 s2, pc) value -> let registers' = writeRegister (registers cpu') d value 
-                                                 in  (cpu' {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (ADDI s1 s2 i, pc) value -> let registers' = writeRegister (registers cpu') s1 value 
-                                                 in  (cpu' {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (BEQ  s1 s2 i, pc) value -> let (cpu_', correctBranch) = case value of 0 -> (updateBranchPredictor False (rob_instruction entry) cpu')
-                                                                                            1 -> (updateBranchPredictor True (rob_instruction entry) cpu')
-                                                     npc' = if correctBranch then npc cpu_' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
-                                                                                                                 1 -> i)
-                                                     cpu'' = (cpu_' {npc = npc'})
-                                                 in  if correctBranch 
-                                                     then (cpu'' {rob = reorderBuff'}, True)
-                                                     else (flushPipeline cpu'', False) -- << ---
-            ROBEntry (BLT  s1 s2 i, pc) value -> let (cpu_', correctBranch) = case value of 0 -> (updateBranchPredictor False (rob_instruction entry) cpu')
-                                                                                            1 -> (updateBranchPredictor True (rob_instruction entry) cpu')
-                                                     npc' = if correctBranch then npc cpu_' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
-                                                                                                                 1 -> i)
-                                                     cpu'' = (cpu_' {npc = npc'})
-                                                 in  if correctBranch 
-                                                     then (cpu'' {rob = reorderBuff'}, True)
-                                                     else (flushPipeline cpu'', False) -- << ---
-            ROBEntry (LW   d s1  , pc) value -> let registers' = writeRegister (registers cpu') d value 
-                                                in  (cpu' {registers = registers', rob = reorderBuff'}, True )
-            ROBEntry (LI   d i, pc) value    -> let registers' = writeRegister (registers cpu') d value 
-                                                in  (cpu' {registers = registers', rob = reorderBuff'}, True)
-            ROBEntry (SW  s1 s2, pc) value   -> let memory' = writeMemory cpu' (fromIntegral value) s2
-                                                in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
-            ROBEntry (SI   d i, pc) value    -> let memory' = writeMemory cpu' (fromIntegral i) d
-                                                in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
-            ROBEntry (JMP i, pc) value       -> (cpu' {npc = i, rob = reorderBuff'}, True) 
+            ROBEntry (Add  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Sub  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Mult  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Div  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Or  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (And  d s1 s2, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)                   
+            ROBEntry (Lt  d s1 s2, pc) execResult  -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Eq  d s1 s2, pc) execResult ->  case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Not d x, pc) execResult      -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (AddI s1 s2 i, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') s1 value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (SubI s1 s2 i, pc) execResult -> case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') s1 value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (MoveI d i, pc) execResult ->   case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (Move d s, pc) execResult ->    case execResult of
+                                                        Const value ->
+                                                            let registers' = writeRegister (registers cpu') d value 
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (LoadIdx d s1 i, pc) execResult -> case execResult of
+                                                            Const value ->
+                                                                let registers' = writeRegister (registers cpu') d value 
+                                                                in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (LoadBaseIdx d s1 s2, pc) execResult ->  case execResult of
+                                                                Const value ->
+                                                                    let registers' = writeRegister (registers cpu') d value 
+                                                                    in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+            ROBEntry (StoreIdx r b i, pc) execResult ->  case execResult of
+                                                                Tuple (value, addr) ->
+                                                                    let memory' = writeMemoryI cpu' (fromIntegral value) addr
+                                                                    in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
+            ROBEntry (StoreBaseIdx r b o, pc) execResult -> case execResult of
+                                                                Tuple (value, addr) ->
+                                                                    let memory' = writeMemoryI cpu' (fromIntegral value) addr
+                                                                    in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
+            ROBEntry (B i, pc) execResult         -> case execResult of
+                                                        Tuple (value, link) -> (cpu' {npc = i, rob = reorderBuff'}, True)     
+            ROBEntry (BT  s1    i, pc) execResult ->  case execResult of
+                                                        Tuple (value, link) -> 
+                                                            let (cpu_', correctBranch) = case value of  0 -> (updateBranchPredictor False (rob_instruction entry) cpu')
+                                                                                                        1 -> (updateBranchPredictor True (rob_instruction entry) cpu')
+                                                                npc' = if correctBranch then npc cpu_' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
+                                                                                                                            1 -> i)
+                                                                cpu'' = (cpu_' {npc = npc'})
+                                                            in  if correctBranch 
+                                                                then (cpu'' {rob = reorderBuff'}, True)
+                                                                else (flushPipeline cpu'', False) -- << ---
+            ROBEntry (BF  s1    i, pc) execResult ->  case execResult of
+                                                        Tuple (value, link) ->    
+                                                            let (cpu_', correctBranch) = case value of  0 -> (updateBranchPredictor False (rob_instruction entry) cpu')
+                                                                                                        1 -> (updateBranchPredictor True (rob_instruction entry) cpu')
+                                                                npc' = if correctBranch then npc cpu_' else ( case value of 0 -> (fromIntegral $ snd $ rob_instruction entry) + 1
+                                                                                                                            1 -> i)
+                                                                cpu'' = (cpu_' {npc = npc'})
+                                                            in  if correctBranch 
+                                                                then (cpu'' {rob = reorderBuff'}, True)
+                                                                else (flushPipeline cpu'', False) -- << ---
+            ROBEntry (Ret, pc) execResult         -> case execResult of
+                                                            Const value -> (cpu', False)
+            ROBEntry (SysCall, pc) execResult     -> case execResult of
+                                                            Const value -> (cpu', False)
+
     in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\nCPU AFTER : \n" ++ show cpu'' ++ "\n\n") cpu''

@@ -99,7 +99,14 @@ createRSEntry cpu  statuses   instructionAndPC  =
         (cpu', renamedInstruction) = renameInstructionRegs instruction cpu
         renamedInstructionAndPc = instructionAndPC --(renamedInstruction, snd instructionAndPC)
     in              case renamedInstruction of 
-                                    ADD  d s1 s2 -> let 
+                                    Add  d s1 s2 -> let 
+                                                        [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    Sub  d s1 s2 -> let 
                                                         [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
@@ -107,75 +114,147 @@ createRSEntry cpu  statuses   instructionAndPC  =
 
                                                         
                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
-                                    ADDI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                    AddI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
                                                         [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
 
                                                         invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
 
                                                     in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' s_status' 0 v v 0 False))
-                                    LTH d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                    SubI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                        [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                        invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' s_status' 0 v v 0 False))
+                                    Mult d s1 s2 -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
                                                         
                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
-                                    CMP d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                    Div d s1 s2 ->  let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
                                                         
                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
-                                    BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                    Lt d s1 s2   -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' s2_status' v1 v2 i False) )
-                                    BLT  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    Eq  d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' s2_status' v1 v2 i False) )
-                                    LW   d s1   ->  let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
-                                                        [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    Or  d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    And d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    Not  d s1    -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
                                                         invalidEntries = compareEntries [d, s1] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status]
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' 0  v1 0 0 False)))
+                                    
+                                    B   i       -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 i 0 i False ))
+                                    SysCall     -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 0 0 0 False ))
+                                    Label i     -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 i 0 i False ))
+                                    BT  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  (cpu',  (maxCycle, ( RSEntry renamedInstructionAndPc d_status' s1_status' s1_status' v1 v1 0 False) )) 
-                                    LI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
-                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [d_status'] = [findEntry d invalidEntries d_status]
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' 0 v1 0 i False) )
+                                    BF  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' 0 0 i i 0 False ))
-                                    SI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
-                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [d_status'] = [findEntry d invalidEntries d_status]
-                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' 0 0 i i 0 False )))
-                                    SW  s1 s2   ->  let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
-                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' 0 v1 0 i False) )
+                                    LoadIdx d s i ->  let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
 
-                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' s2_status' v1 v2 0 False) )
-                                    JMP i       ->  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 i 0 i False ))
+                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                      in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' s_status' 0 v v 0 False))
+                                    LoadBaseIdx d s1 s2  -> 
+                                                    let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, (toRegisterNum s2)] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry  (toRegisterNum s2) invalidEntries s2_status]
+
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    StoreIdx d s i -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                      in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' s_status' 0 v v 0 False))
+                                    StoreBaseIdx d s1 s2  -> 
+                                                    let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, (toRegisterNum s2)] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry  (toRegisterNum s2) invalidEntries s2_status]
+
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
+                                    Move  d s1    -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
+                                                         v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                         invalidEntries = compareEntries [d, s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                         [d_status', s1_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status]
+                                                        
+                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' 0  v1 0 0 False)))  
+                                    MoveI  s1 i ->  let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
+
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' 0 v1 0 i False) )
+                                      
+                                    
     where   foo maybeEntry  = case maybeEntry of  Nothing -> []
                                                   Just anEntry -> case fst (rs_instruction anEntry) of 
-                                                                    ADD  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    LTH   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    CMP   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    ADDI d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
-                                                                    BLT  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
-                                                                    BEQ  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
-                                                                    LW   d s1    -> zip [d, s1] [qd anEntry, qj anEntry]
-                                                                    LI   d i     -> zip [d] [qd anEntry]
-                                                                    SI   d i     -> zip [d] [qd anEntry]
-                                                                    SW   s1 s2   -> zip  [s1, s2] [qj anEntry, qk anEntry]
-                                                                    JMP  i     -> []
+                                                                    Add  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Sub   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Mult   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Div  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Eq  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Lt  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Or  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    And  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    LoadBaseIdx  d s1 s2 -> zip [d,s1,(toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    StoreBaseIdx d s1 s2 -> zip [d,s1,(toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    MoveI d i     -> zip [d] [qd anEntry]
+                                                                    Move d s     -> zip [d] [qd anEntry, qj anEntry]
+                                                                    LoadIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    StoreIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    Not d s  -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    BT d i ->  zip [d] [qd anEntry]
+                                                                    BF d i -> zip [d] [qd anEntry]
             compareEntries entries1 existingEntries = foldr (\(regNum) entries ->   if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
                                                                                     else entries) [] entries1
@@ -196,82 +275,166 @@ updateRSEntry cpu  statuses cycle entry  =
 
     in  --trace ("higher priority entries : " ++ show higherPriorityEntries ++ "\n") $
                          case instruction of 
-                                    ADD  d s1 s2 -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                    Add  d s1 s2 -> let 
+                                                        [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                        
                                                     in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
-                                    ADDI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                    Sub  d s1 s2 -> let 
+                                                        [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    AddI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
                                                         [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
 
                                                         invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
 
-                                                    in  RSEntry instructionAndPC d_status' s_status' 0 v v 0 False
-                                    LTH d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                    in  (RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
+                                    SubI d s i   -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                        [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                        invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                    in  (RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
+                                    Mult d s1 s2 -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    
+                                                        
                                                     in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
-                                    CMP d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                    Div d s1 s2 ->  let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
                                                         invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    
+                                                        
                                                     in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
-                                    BEQ  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                    Lt d s1 s2   -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
-                                                    in  (RSEntry instructionAndPC 0 s1_status' s2_status' v1 v2 i False) 
-                                    BLT  s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    Eq  d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                    in  RSEntry instructionAndPC 0 s1_status' s2_status' v1 v2 i False
-                                    
-                                    LW   d s1    -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
-                                                        [v1] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status)]
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    Or  d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    And d s1 s2  -> let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
+
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    Not  d s1    -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
                                                         invalidEntries = compareEntries [d, s1] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [d_status', s1_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status]
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' 0  v1 0 0 False)
+                                    
+                                    B   i       -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
+                                    SysCall     -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
+                                    Label i     -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
+                                    BT  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  ( RSEntry instructionAndPC d_status' s1_status' s1_status' v1 v1 0 False) 
-                                    LI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
-                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [d_status'] = [findEntry d invalidEntries d_status]
+                                                    in  (RSEntry instructionAndPC 0 s1_status' 0 v1 0 i False) 
+                                    BF  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  (RSEntry instructionAndPC d_status' 0 0 i i 0 False )
-                                    SI   d i     -> let [d_status] = map (fromMaybe 0 . flip getRegStat statuses) [d]
+                                                    in  (RSEntry instructionAndPC 0 s1_status' 0 v1 0 i False) 
+                                    LoadIdx d s i ->  let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
 
-                                                        invalidEntries = compareEntries [d] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [d_status'] = [findEntry d invalidEntries d_status]
+                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
 
-                                                    in  (RSEntry instructionAndPC d_status' 0 0 i i 0 False )
-                                    SW   s1 s2   -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
-                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
-                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
-                                                    in  (RSEntry instructionAndPC 0 s1_status' s2_status' v1 v2 0 False) 
-                                    JMP i        -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
-    where foo maybeEntry  = case maybeEntry of Nothing -> []
-                                               Just anEntry -> case fst (rs_instruction anEntry) of 
-                                                                    ADD  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    ADDI d s1 i  -> zip [d, s1] [qd anEntry, qj anEntry]
-                                                                    LTH   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    CMP   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
-                                                                    BEQ  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
-                                                                    BLT  s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
-                                                                    LW   d s1    -> zip [d, s1] [qd anEntry, qj anEntry]
-                                                                    LI   d i     -> zip [d] [qd anEntry]
-                                                                    SI   d i     -> zip [d] [qd anEntry]
-                                                                    SW   s1 s2   ->  zip [s1, s2] [qj anEntry, qk anEntry]
-                                                                    JMP  i     -> []
+                                                      in  (RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
+                                    LoadBaseIdx d s1 s2  -> 
+                                                    let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, (toRegisterNum s2)] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry  (toRegisterNum s2) invalidEntries s2_status]
+
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    StoreIdx d s i -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
+                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+
+                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
+
+                                                      in  (RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
+                                    StoreBaseIdx d s1 s2  -> 
+                                                    let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
+                                                        invalidEntries = compareEntries [d, s1, (toRegisterNum s2)] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [d_status', s1_status', s2_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status, findEntry (toRegisterNum s2) invalidEntries s2_status]
+
+                                                        
+                                                    in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
+                                    Move  d s1    -> let [d_status, s1_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1]
+                                                         v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                         invalidEntries = compareEntries [d, s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                         [d_status', s1_status'] = [findEntry d invalidEntries d_status, findEntry s1 invalidEntries s1_status]
+                                                        
+                                                     in  (RSEntry instructionAndPC d_status' s1_status' 0  v1 0 0 False)
+                                    MoveI  s1 i ->  let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
+                                                        v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
+                                                        invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status'] = [findEntry s1 invalidEntries s1_status]
+
+                                                    in  (RSEntry instructionAndPC 0 s1_status' 0 v1 0 i False) 
+                                      
+                                    
+    where foo maybeEntry  = case maybeEntry of  Nothing -> []
+                                                Just anEntry -> case fst (rs_instruction anEntry) of 
+                                                                    Add  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Sub   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    SubI  d s1 i -> zip [d, s1] [qd anEntry, qj anEntry]
+                                                                    AddI  d s1 i -> zip [d, s1] [qd anEntry, qj anEntry]
+                                                                    Mult   d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Div  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Eq  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Lt  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    Or  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    And  d s1 s2 -> zip [d,s1,s2] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    LoadBaseIdx  d s1 s2 -> zip [d,s1, (toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    StoreBaseIdx d s1 s2 -> zip [d,s1, (toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
+                                                                    MoveI d i     -> zip [d] [qd anEntry]
+                                                                    Move d s     -> zip [d] [qd anEntry, qj anEntry]
+                                                                    LoadIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    StoreIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    Not d s  -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    BT d i ->  zip [d] [qd anEntry]
+                                                                    
+                                                                    BF d i -> zip [d] [qd anEntry]
           compareEntries entries1 existingEntries = foldr (\(regNum) entries ->     if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
                                                                                     else entries) [] entries1

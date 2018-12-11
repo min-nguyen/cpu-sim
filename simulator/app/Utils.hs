@@ -3,7 +3,7 @@ module Utils where
 import Lib
 import Data.Word
 import Data.Bits
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
 import Data.Maybe
@@ -27,6 +27,8 @@ instance Ord RegisterNum where
 
 
 -- data Status             = Ready | Stalled  deriving Show
+
+data ExecutionResult = Const Int | Tuple (Int, Int) deriving Show
 
 data Registers          = Registers {
                             r0 :: Int,
@@ -52,42 +54,42 @@ instance Show Registers where
         "[R0: " ++ show r0 ++ " R1: " ++ show r1 ++ " R2 : " ++ show r2 ++ " R3 : " ++ show r3 ++ " R4 : " ++ show r4 ++ " R5 : " ++ show r5 ++ " R6 : " ++ show r6 ++ " R7 : " ++ show r7 ++ "]\n" ++
         "[R8: " ++ show r8 ++ " R9: " ++ show r9 ++ " R10 : " ++ show r10 ++ " R11 : " ++ show r11 ++ " R12 : " ++ show r12 ++ " R13 : " ++ show r13 ++ " R14 : " ++ show r14 ++ " R15 : " ++ show r15 ++ "]"
 
-data Asm dest source immediate =
-    -- Memory
-    MoveI        dest immediate                     -- r <- val
-    -- | MoveLabel    RegIdx LabelAddr                                    -- r <- *label
-    | Move         dest source                   -- r <- [from]
-    | LoadIdx      dest source immediate   -- r <- [[base] + offset]
-    | LoadBaseIdx  dest source source -- r <- [[base] + [R_offset]]
-    | StoreIdx     dest source immediate   -- r -> [[base] + offset]
-    | StoreBaseIdx dest source source -- r -> [[base] + [R_offset]]
-    -- Arithmetic/Logic
-    | Add  dest source source -- r <- [x] + [y]
-    | AddI dest source immediate    -- r <- [x] + i
-    | Sub  dest source source -- r <- [x] - [y]
-    | SubI dest source immediate     -- r <- [x] - i
-    | Mult dest source source -- r <- [x] * [y]
-    | Div  dest source source -- r <- [x] / [y]
-    | Eq   dest source source -- r <- [x] == [y]
-    | Lt   dest source source -- r <- [x] < [y]
-    | Or   dest source source -- r <- [x] || [y]
-    | And  dest source source -- r <- [x] && [y]
-    | Not  dest source              -- r <- ![x]
-    -- Branching
-    | B  immediate              -- Unconditional branch to label.
-    | BT dest immediate -- Branch to label if r == 1
-    | BF dest immediate -- Branch to label if r == 0
-    | Ret                                -- Branch to address in link register.
-    | SysCall                            -- Terminates execution.
-    -- Debugging
-    | Print  source -- Print value in a register.
-    | PrintC source -- Print value in a register as an ASCII character.
-    | PrintLn                -- Print a newline.
-    -- Extra
-    | NoOp
-    | Label immediate
+data Assembly dest source immediate 
+    =     MoveI        dest immediate                     -- r <- val
+        -- | MoveLabel    RegIdx LabelAddr                                    -- r <- *label
+        | Move         dest source                   -- r <- [from]
+        | LoadIdx      dest source immediate   -- r <- [[base] + offset]
+        | LoadBaseIdx  dest source immediate -- r <- [[base] + [R_offset]]
+        | StoreIdx     dest source immediate   -- r -> [[base] + offset]
+        | StoreBaseIdx dest source immediate -- r -> [[base] + [R_offset]]
+        -- Arithmetic/Logic
+        | Add  dest source source -- r <- [x] + [y]
+        | AddI dest source immediate    -- r <- [x] + i
+        | Sub  dest source source -- r <- [x] - [y]
+        | SubI dest source immediate     -- r <- [x] - i
+        | Mult dest source source -- r <- [x] * [y]
+        | Div  dest source source -- r <- [x] / [y]
+        | Eq   dest source source -- r <- [x] == [y]
+        | Lt   dest source source -- r <- [x] < [y]
+        | Or   dest source source -- r <- [x] || [y]
+        | And  dest source source -- r <- [x] && [y]
+        | Not  dest source              -- r <- ![x]
+        -- Branching
+        | B  immediate              -- Unconditional branch to label.
+        | BT dest immediate -- Branch to label if r == 1
+        | BF dest immediate -- Branch to label if r == 0
+        | Ret                                -- Branch to address in link register.
+        | SysCall                            -- Terminates execution.
+        -- Debugging
+        | Print  source -- Print value in a register.
+        | PrintC source -- Print value in a register as an ASCII character.
+        | PrintLn                -- Print a newline.
+        -- Extra
+        | NoOp
+        | Label immediate
+        deriving Show
 
-data Assembly dest source immediate
+data Asm dest source immediate
                         = ADD  dest source source
                         | ADDI source source immediate
                         | BEQ  source source immediate 
@@ -122,7 +124,7 @@ data CPU                = CPU {
 
 instance Show CPU where
     show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer) = 
-        "InstructionMemory: " ++ show imem ++ "\n" ++
+     
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
         "ReorderBuffer: " ++ show rob ++ "\n" ++
@@ -186,7 +188,7 @@ type ROBId              = Int
 
 data ROBEntry           = ROBEntry {
                             rob_instruction :: InstructionAndPc,
-                            rob_value       :: Int
+                            rob_value       :: ExecutionResult
                         } deriving Show
 
 data ReorderBuffer      = ReorderBuffer { 
@@ -265,6 +267,10 @@ initCPU instructions = let i_mem = V.fromList instructions
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
 
+writeMemoryI :: CPU -> Int -> Int -> Memory
+writeMemoryI cpu i addr = d_memory cpu V.// [(fromIntegral i, addr)]
+
+
 writeRegister :: Registers -> RegisterNum -> Int -> Registers
 writeRegister registers regNum writeVal
     = case regNum of R0 -> registers { r0 = writeVal }
@@ -327,6 +333,26 @@ toRegisterNum regNum
                         14 -> R14
                         15 -> R15
 
+fromRegisterNum :: RegisterNum -> Int
+fromRegisterNum regNum 
+    = case regNum of    
+                        R0 -> 0
+                        R1 -> 1
+                        R2 -> 2
+                        R3 -> 3
+                        R4  -> 4
+                        R5 -> 5
+                        R6 -> 6
+                        R7 ->  7
+                        R8 -> 8
+                        R9 -> 9
+                        R10 -> 10
+                        R11 -> 11
+                        R12  -> 12
+                        R13 -> 13
+                        R14 -> 14
+                        R15 -> 15
+
 getRegStat :: RegisterNum -> RegisterStatuses -> Maybe Int
 getRegStat regNum regstats 
     =  Map.lookup regNum regstats
@@ -347,50 +373,92 @@ flushPipeline cpu = cpu { rs_station = initReservationStation,
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 
-        case instruction of ADD _ _ _ -> IntUnit
-                            ADDI _ _ _-> IntUnit 
-                            BEQ _ _ _-> BranchUnit
-                            BLT _ _ _-> BranchUnit
-                            LTH _ _ _ -> IntUnit
-                            CMP _ _ _ -> IntUnit
-                            JMP  _ -> BranchUnit
-                            LW _ _ -> MemUnit 
-                            LI _ _ -> MemUnit 
-                            SW _ _ -> MemUnit 
-                            SI _ _ -> MemUnit
+        case instruction of Add _ _ _ -> IntUnit
+                            AddI _ _ _ -> IntUnit 
+                            Sub _ _ _ -> IntUnit
+                            SubI _ _ _ -> IntUnit
+                            Mult _ _ _ -> IntUnit
+                            Div _ _ _ -> IntUnit
+                            Eq _ _ _ -> IntUnit 
+                            Lt _ _ _ -> IntUnit 
+                            Or _ _ _ -> IntUnit 
+                            And _ _ _ -> IntUnit 
+                            Not _ _ -> IntUnit
+                            Print _ -> IntUnit 
+                            PrintLn -> IntUnit 
+                            B  _ -> BranchUnit
+                            BT _ _ -> BranchUnit 
+                            BF _ _ -> BranchUnit
+                            Ret -> BranchUnit 
+                            SysCall -> BranchUnit
+                            Ret -> BranchUnit
+                            MoveI _ _ -> MemUnit 
+                            Move _ _ -> MemUnit 
+                            LoadIdx _ _ _ -> MemUnit
+                            LoadBaseIdx _ _ _ -> MemUnit
+                            StoreIdx _ _ _ -> MemUnit
+                            StoreBaseIdx _ _ _ -> MemUnit
+
 
 
 
 allocateRegStats :: RegisterStatuses -> Instruction -> RegisterStatuses
 allocateRegStats regstats instrct = 
     case instrct of 
-            ADD  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
-            CMP  d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
-            ADDI s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            LTH   d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
-            BEQ  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            BLT  s1 s2 i -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            LW   s1 s2   -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            LI   d i     -> (setRegStat d 0) regstats
-            SW   s1 s2   -> (setRegStat s1 0 . setRegStat s2 0) regstats
-            SI   d i     -> (setRegStat d 0) regstats
-            JMP i        ->  regstats
+            Add  d s1 s2        -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            AddI d s  i         -> (setRegStat s 0 . setRegStat d 0) regstats
+            Sub  d s1 s2        -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            SubI d s  i         -> (setRegStat s 0 . setRegStat d 0) regstats
+            Mult  d s1 s2       -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            Div  d s1 s2        -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            Or  d s1 s2         -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            Lt  d s1 s2         -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            Eq  d s1 s2         -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
+            Not  d s            -> (setRegStat s  0 . setRegStat d 0) regstats
+            
+            Move   s1 s2        -> (setRegStat s1 0 . setRegStat s2 0) regstats
+            MoveI  s1 i         -> (setRegStat s1 0 ) regstats
+            LoadIdx d s i       -> (setRegStat s 0 . setRegStat d 0) regstats
+            LoadBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat (toRegisterNum s2) 0 . setRegStat d 0) regstats
+            StoreIdx d s i      -> (setRegStat s 0 . setRegStat d 0) regstats
+            StoreBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat (toRegisterNum s2) 0 . setRegStat d 0) regstats
+
+            B i -> regstats 
+            BT r i -> (setRegStat r 0 ) regstats
+            BF r i -> (setRegStat r 0 ) regstats
+            Ret -> regstats 
+            SysCall -> regstats 
+            Print _ -> regstats 
+            PrintLn -> regstats
 
 deallocateRegStats :: RegisterStatuses -> Instruction -> RSId -> Int -> Int -> Int -> RegisterStatuses
 deallocateRegStats regstats instrct rsid d_status s1_status s2_status = 
     let f = \reg rsID status reg_stats -> if status == 0 then setRegStat reg rsID reg_stats else reg_stats
     in case instrct of 
-            ADD  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
-            CMP  d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats 
-            ADDI s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status)  regstats
-            LTH   d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
-            BEQ  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
-            BLT  s1 s2 i -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
-            LW   s1 s2   -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
-            LI   d i     -> (f d rsid d_status) regstats
-            SW   s1 s2   -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
-            SI   d i     -> (f d rsid d_status) regstats
-            JMP  i     ->  regstats
+            Add  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            AddI d s  i         -> (f d rsid d_status . f s rsid s1_status)  regstats
+            Sub  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            SubI d s  i         -> (f d rsid d_status . f s rsid s1_status)  regstats
+            Mult  d s1 s2       -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            Div  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            Or  d s1 s2         -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            Lt  d s1 s2         -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            Eq  d s1 s2         -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            Not  d s            -> (f s rsid s1_status . f d rsid d_status) regstats
+            
+            Move   s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
+            MoveI  s1 i         -> (f s1 rsid s1_status) regstats
+            LoadIdx d s i       -> (f s rsid s1_status . f d rsid d_status) regstats
+            LoadBaseIdx d s1 s2 -> (f s1 rsid s1_status . f (toRegisterNum s2) rsid s2_status . f d rsid d_status) regstats
+            StoreIdx d s i      -> (f s rsid s1_status. f d rsid d_status) regstats
+            StoreBaseIdx d s1 s2 -> (f s1 rsid s1_status . f (toRegisterNum s2) rsid s2_status . f d rsid d_status) regstats
+
+            B i -> regstats 
+            BT r i -> (f r rsid s1_status) regstats
+            BF r i -> (f r rsid s1_status) regstats
+            Ret -> regstats 
+            SysCall -> regstats
+
 
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
@@ -398,20 +466,32 @@ allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
 changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs
 
-euToROB :: (InstructionAndPc, Int) -> ROBEntry
-euToROB (instrct, val) = ROBEntry instrct val
+euToROB :: (InstructionAndPc, ExecutionResult) -> ROBEntry
+euToROB (instrct, execResult) = ROBEntry instrct execResult
 
 sameRegs :: Instruction -> Bool
 sameRegs instrct = 
     case instrct of 
-            ADD  d s1 s2 -> s1 == d || s2 == d
-            CMP  d s1 s2 -> s1 == d || s2 == d
-            ADDI s1 s2 i -> s1 == s2
-            LTH   d s1 s2 -> s1 == d || s2 == d
-            BEQ  s1 s2 i -> False
-            BLT  s1 s2 i -> False
-            LW   s1 s2   -> s1 == s2
-            LI   d i     -> False
-            SW   s1 s2   -> False
-            SI   d i     -> False
-            JMP i        -> False
+        Add  d s1 s2        -> s1 == d || s2 == d
+        AddI d s  i         -> s == d 
+        Sub  d s1 s2        -> s1 == d || s2 == d
+        SubI d s  i         -> s == d 
+        Mult  d s1 s2       -> s1 == d || s2 == d
+        Div  d s1 s2        -> s1 == d || s2 == d
+        Or  d s1 s2         -> s1 == d || s2 == d
+        Lt  d s1 s2         -> s1 == d || s2 == d
+        Eq  d s1 s2         -> s1 == d || s2 == d
+        Not  d s            -> s == d 
+        
+        Move   s1 s2        -> s1 == s2 
+        MoveI  s1 i         -> False
+        LoadIdx d s i       ->  s == d 
+        LoadBaseIdx d s1 s2 -> s1 == d || (toRegisterNum s2) == d
+        StoreIdx d s i      ->  s == d 
+        StoreBaseIdx d s1 s2 -> s1 == d || (toRegisterNum s2) == d
+
+        B i -> False 
+        BT r i ->  False
+        BF r i ->  False
+        Ret -> False 
+        SysCall -> False

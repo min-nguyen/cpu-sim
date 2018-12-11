@@ -51,43 +51,86 @@ parseRegister =
     try (R9 <$ string "R9") 
 
 
-parseSW :: Parser Instruction 
-parseSW = SW <$ string "SW" <* space <*> parseRegister <* space <*> parseRegister
-
-parseSI :: Parser Instruction 
-parseSI = SI <$ string "SI" <* space <*> parseRegister <* space <*> parseInt
-
-parseLI :: Parser Instruction
-parseLI = LI <$ string "LI" <* space <*> parseRegister <* space <*> parseInt
-
 parseADD :: Parser Instruction
-parseADD = ADD <$ string "ADD" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
-
+parseADD = Add <$ string "Add" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseSUB :: Parser Instruction
+parseSUB = Sub <$ string "Sub" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseMUL :: Parser Instruction
+parseMUL = Mult <$ string "Mult" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseADDI :: Parser Instruction
-parseADDI = ADDI <$ string "ADDI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
-
-parseBEQ :: Parser Instruction
-parseBEQ = BEQ <$ string "BEQ" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
-
-parseLW :: Parser Instruction
-parseLW = LW <$ string "LW"  <* space <*> parseRegister <* space <*> parseRegister 
-
-parseLTH :: Parser Instruction
-parseLTH = LTH <$ string "LTH" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
-
-parseJMP :: Parser Instruction
-parseJMP = JMP <$ string "JMP" <*> parseInt 
-
-parseBLT :: Parser Instruction
-parseBLT = BLT <$ string "BLT" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
-
-parseCMP :: Parser Instruction
-parseCMP = CMP <$ string "CMP" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
-
+parseADDI = AddI <$ string "AddI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseSUBI :: Parser Instruction
+parseSUBI = SubI <$ string "SubI" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseDIV :: Parser Instruction
+parseDIV = Div <$ string "Div" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseAND :: Parser Instruction
+parseAND = And <$ string "And" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseOR :: Parser Instruction
+parseOR = Or <$ string "Or" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseLT :: Parser Instruction
+parseLT = Lt <$ string "Lt" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseNOT :: Parser Instruction
+parseNOT = Not <$ string "Not" <* space <*> parseRegister <* space <*> parseRegister
+parseMOVE :: Parser Instruction
+parseMOVE = Move <$ string "Move" <* space <*> parseRegister <* space <*> parseRegister
+parseMOVEI :: Parser Instruction
+parseMOVEI = MoveI <$ string "MoveI" <* space <*> parseRegister <* space <*> parseInt
+parseLOADIDX :: Parser Instruction
+parseLOADIDX = LoadIdx <$ string "LoadIdx" <* space <*> parseRegister <* space <*> parseRegister  <* space  <*> parseInt
+parseLOADBASEIDX :: Parser Instruction
+parseLOADBASEIDX = LoadBaseIdx <$ string "LoadBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseSTOREIDX :: Parser Instruction
+parseSTOREIDX = StoreIdx <$ string "StoreIdx" <* space <*> parseRegister <* space <*> parseRegister  <* space  <*> parseInt
+parseSTOREBASEIDX :: Parser Instruction
+parseSTOREBASEIDX = StoreBaseIdx <$ string "StoreBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseB :: Parser Instruction
+parseB = B <$ string "B" <* space <*> parseInt
+parseBT :: Parser Instruction
+parseBT = BT <$ string "BT" <* space <*> parseRegister <* space <*> parseInt
+parseBF :: Parser Instruction
+parseBF = BF <$ string "BF" <* space <*> parseRegister <* space <*> parseInt
+parseRET :: Parser Instruction
+parseRET = Ret <$ string "Ret" 
+parseSYS :: Parser Instruction
+parseSYS = SysCall <$ string "SysCall" 
+parsePrint :: Parser Instruction
+parsePrint = Print <$ string "Print" <* space <*> parseRegister
+parsePrintln :: Parser Instruction
+parsePrintln = PrintLn <$ string "PrintLn" 
+parseLABEL :: Parser Instruction
+parseLABEL = Utils.Label <$ string "Label" <*  space <*> parseInt
+-- sc :: Parser ()
+-- sc = L.space (() <$ some (char ' ')) lineCmnt blockCmnt
+--   where
+--     lineCmnt  = L.skipLineComment "//"
+--     blockCmnt = L.skipBlockComment "/*" "*/"
 
 parseInstruction :: Parser Instruction
-parseInstruction =  try parseLW <|> try parseLI <|> try parseSW <|> try parseADD <|> try parseADDI <|> try parseBEQ <|> 
-                    try parseBLT <|> try parseJMP <|> try parseLTH <|> try parseCMP <|> try parseSI
+parseInstruction = 
+    try parseADDI  <|>
+    try parseSUBI  <|>
+    try parseADD <|>
+    try  parseSUB  <|>
+    try  parseMUL  <|>
+    try parseDIV  <|>
+    try parseAND  <|>
+    try parseOR  <|>
+    try parseLT  <|>
+    try parseNOT  <|>
+    try parseMOVEI  <|>
+    try parseMOVE  <|>
+    try parseLOADBASEIDX  <|>
+    try parseLOADIDX  <|>
+    try parseSTOREBASEIDX  <|>
+    try parseSTOREIDX  <|>
+    try parseLABEL <|>
+    try parseBT  <|>
+    try parseBF  <|>
+    try parseB <|>
+    try parseRET <|>
+    try parseSYS  <|>
+    try parsePrint <|>
+    try parsePrintln 
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof

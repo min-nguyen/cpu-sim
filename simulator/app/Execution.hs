@@ -4,7 +4,7 @@ import Lib
 import Data.Word
 import Data.Bits
 import Utils
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import Debug.Trace
 import ReservationStation
@@ -62,50 +62,115 @@ updateExecUnits cpu =
 
     in  cpu' 
 
-execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, Int)
-execInstruction cpu (ADD dest source_a source_b, pc)     
+execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, ExecutionResult)
+-- BRANCH
+execInstruction cpu (BT source_a i, pc)     
+    = let regs   = registers cpu
+          a =  readRegister (registers cpu) source_a
+          link_reg_val = readRegister regs R14
+      in case () of 
+                _ | a == 1        -> ((BT source_a i, pc), Tuple (1, link_reg_val))
+                _                 -> ((BT source_a i, pc), Tuple (0, link_reg_val))
+execInstruction cpu (BF source_a i, pc)     
+    = let regs   = registers cpu
+          a =  readRegister (registers cpu) source_a
+          link_reg_val = readRegister regs R14
+      in case () of 
+                _ | a == 0        -> ((BF source_a  i, pc), Tuple (1, link_reg_val))
+                _                 -> ((BF source_a  i, pc), Tuple (1, link_reg_val))
+execInstruction cpu (B i, pc) =
+    let  link_reg_val = readRegister (registers cpu) R14
+    in   ((B i, pc), Tuple (1, link_reg_val))
+-- MOVE
+execInstruction cpu (MoveI d i, pc)
+    = ((MoveI d i, pc), Const i)
+execInstruction cpu (Move d s, pc)
+    = let regs   = registers cpu
+          a      = readRegister (registers cpu) s
+      in  ((Move d s, pc), Const a)
+-- LOAD
+execInstruction cpu (LoadIdx d s i, pc)
+    = let regs   = registers cpu
+          base   = readRegister (registers cpu) s
+          offset = i 
+          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + offset)
+      in  ((LoadIdx d s i, pc), Const loadedWord)
+execInstruction cpu (LoadBaseIdx d s1 s2, pc)
+    = let regs   = registers cpu
+          base   = readRegister (registers cpu) s1
+          r_offset = readRegister (registers cpu) (toRegisterNum s2) 
+          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + r_offset)
+      in  ((LoadBaseIdx d s1 s2, pc), Const loadedWord)    
+-- STORE
+execInstruction cpu (StoreIdx r b i, pc)
+    = let regs   = registers cpu
+          val    = readRegister (registers cpu) r
+          base   = readRegister (registers cpu) b
+          offset = i 
+          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + offset)
+      in  ((StoreIdx r b i, pc), Tuple (val, fromIntegral $ base + offset))
+execInstruction cpu (StoreBaseIdx r s1 s2, pc)
+    = let regs   = registers cpu
+          val    = readRegister (registers cpu) r
+          base   = readRegister (registers cpu) s1
+          r_offset = readRegister (registers cpu) (toRegisterNum s2)
+      in  ((StoreBaseIdx r s1 s2, pc), Tuple (val, fromIntegral $ base + r_offset))
+-- ARITHMETIC
+execInstruction cpu (Add dest source_a source_b, pc)     
     = let regs = registers cpu
           [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
           val = source_a_val + source_b_val
-      in  trace ("ADD " ++ show source_a ++ " and " ++ show source_b ++ " is " ++ show val ++ "\n") ((ADD dest source_a source_b, pc), val)
-execInstruction cpu (LTH dest source_a source_b, pc)     
-    = let regs = registers cpu
-          val  = if (readRegister regs source_a) < (readRegister regs source_b) then 1 else 0
-      in  ((LTH dest source_a source_b, pc), val)
-    
-execInstruction cpu (CMP dest source_a source_b, pc)     
-    = let regs = registers cpu
-          val  = if (readRegister regs source_a) == (readRegister regs source_b) then 1 else 0
-      in  ((CMP dest source_a source_b, pc), val)
-execInstruction cpu (ADDI dest source i, pc)  
+      in  ((Add dest source_a source_b, pc), Const val)
+execInstruction cpu (AddI dest source i, pc)  
     = let regs = registers cpu
           [dest_reg, source_reg] = map (readRegister regs) [dest, source] 
           val = i + source_reg
-      in  ((ADDI dest source i, pc), val)  
-execInstruction cpu (BEQ source_a source_b i, pc)     
-    = let regs   = registers cpu
-          [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
-      in case () of 
-                _ | a == b        -> ((BEQ source_a source_b i, pc), 1)
-                _                 -> ((BEQ source_a source_b i, pc), 0)
-execInstruction cpu (JMP i, pc) = ((JMP i, pc), i)
-execInstruction cpu (BLT source_a source_b i, pc)     
-    = let regs   = registers cpu
-          [a, b] = map (readRegister (registers cpu)) [source_a, source_b]
-      in case () of 
-                _ | a < b         -> ((BLT source_a source_b i, pc), 1)
-                _                 -> ((BLT source_a source_b i, pc), 0)
-execInstruction cpu (LW dest source, pc)   
-    = let loadedWord = (d_memory cpu) V.! (fromIntegral $ (readRegister (registers cpu) source))
-      in  ((LW dest source, pc), loadedWord)
-execInstruction cpu (SI s i, pc)
-    = ((SI s i, pc), 1)
-execInstruction cpu (SW s1 s2, pc)
+      in  ((AddI dest source i, pc), Const val)     
+execInstruction cpu (Sub dest source_a source_b, pc)     
     = let regs = registers cpu
-      in  ((SW s1 s2, pc), readRegister regs s1)
-execInstruction cpu (LI d i, pc)
-    = ((LI d i, pc), i)
--- execInstruction cpu (JALR dest source) 
---     = let regs = registers cpu
---           regs' = writeRegister regs dest (pc cpu + 1)
---       in  cpu { npc = readRegister regs' source }
+          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          val = source_a_val - source_b_val
+      in  ((Sub dest source_a source_b, pc), Const val)
+execInstruction cpu (SubI dest source i, pc)  
+    = let regs = registers cpu
+          source_reg = readRegister regs source
+          val = source_reg - i
+      in  ((SubI dest source i, pc), Const val)         
+execInstruction cpu (Mult dest source_a source_b, pc)     
+    = let regs = registers cpu
+          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          val = source_a_val * source_b_val
+      in  ((Mult dest source_a source_b, pc), Const val)
+execInstruction cpu (Div dest source_a source_b, pc)     
+    = let regs = registers cpu
+          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          val = fromIntegral $  floor $ fromIntegral source_a_val / fromIntegral source_b_val
+      in  ((Div dest source_a source_b, pc), Const val)    
+-- LOGIC
+execInstruction cpu (Lt dest source_a source_b, pc)     
+    = let regs = registers cpu
+          val  = if (readRegister regs source_a) < (readRegister regs source_b) then 1 else 0
+      in  ((Lt dest source_a source_b, pc), Const val)
+execInstruction cpu (Eq dest source_a source_b, pc)     
+    = let regs = registers cpu
+          val  = if (readRegister regs source_a) == (readRegister regs source_b) then 1 else 0
+      in  ((Eq dest source_a source_b, pc), Const val)
+execInstruction cpu (Or dest source_a source_b, pc)     
+    = let regs = registers cpu
+          val  = (readRegister regs source_a) .|. (readRegister regs source_b) 
+      in  ((Or dest source_a source_b, pc), Const val)
+execInstruction cpu (And dest source_a source_b, pc)     
+    = let regs = registers cpu
+          val  = (readRegister regs source_a) .&. (readRegister regs source_b)
+      in  ((And dest source_a source_b, pc), Const val)
+execInstruction cpu (Not dest source, pc)     
+    = let regs = registers cpu
+          val  = complement (readRegister regs source)
+      in  ((Not dest source, pc), Const val)
+-- Subroutines
+execInstruction cpu (Ret, pc)     
+    = ((Ret, pc), Const 1)
+execInstruction cpu (SysCall, pc)     
+    = ((SysCall, pc), Const 1)
+execInstruction cpu (NoOp, pc)     
+    = ((NoOp, pc), Const 0)

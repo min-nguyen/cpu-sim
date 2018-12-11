@@ -29,44 +29,56 @@ updateFetch cpu = let cpu' = fetch cpu current_pc
 
 fetch :: CPU -> Int -> CPU 
 fetch cpu current_pc = 
-        if current_pc >= V.length (i_memory cpu)
-        then cpu
-        else 
-        let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
-        in   trace (show $ fst nextInstruction) $
-             case fst nextInstruction of 
-                        BEQ s1 s2 i -> let (current_pc', branched) 
-                                                        = if   predictBranch (branch_predictor cpu)
-                                                          then (i, True)
-                                                          else (fromIntegral (current_pc + 1), False) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
-                                           buffer' = buff V.++ (V.fromList [nextInstruction])
-                                           fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
-                                           branchPred = (branch_predictor cpu) {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor cpu)) }
-                                           cpu' = cpu { fetchUnit = tick fUnit , 
-                                                pc  = (fromIntegral $ current_pc'),
-                                                npc = (fromIntegral $ current_pc'),
-                                                branch_predictor = branchPred}
-                                       in  cpu' 
-                        BLT s1 s2 i -> let (current_pc', branched) 
-                                                        = if   predictBranch (branch_predictor cpu)
-                                                          then (i, True)
-                                                          else (fromIntegral (current_pc + 1), False) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
-                                           buffer' = buff V.++ (V.fromList [nextInstruction])
-                                           fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
-                                           branchPred = (branch_predictor cpu) {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor cpu)) }
-                                           cpu' = cpu { fetchUnit = tick fUnit , 
-                                                pc  = (fromIntegral $ current_pc'),
-                                                npc = (fromIntegral $ current_pc'),
-                                                branch_predictor = branchPred}
-                                       in   cpu' 
-                        _           -> let current_pc' = fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
-                                           buffer' = buff V.++ (V.fromList [nextInstruction])
-                                           fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
-                                           cpu' = cpu { fetchUnit = tick fUnit , 
-                                                pc  = (fromIntegral $ current_pc'),
-                                                npc = (fromIntegral $ current_pc')}
-                                       in  fetch cpu' (fromIntegral $ current_pc')
-
-        where   buff = buffer (fetchUnit cpu)
+          if current_pc >= V.length (i_memory cpu) || V.length buff >= 4
+          then cpu
+          else 
+          let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
+          in   trace (show $ fst nextInstruction) $
+               case fst nextInstruction of 
+                              B i    -> conditionalFetch i nextInstruction
+                              BT s i -> conditionalFetch i nextInstruction
+                              BF s i -> conditionalFetch i nextInstruction 
+                              Ret    -> let link_reg_val = r14 $ registers cpu 
+                                        in unconditionalFetch link_reg_val nextInstruction
+                              Label i -> noopFetch
+                              PrintLn -> noopFetch 
+                              Print _ -> noopFetch
+                              _      -> normalFetch nextInstruction                          
+          where conditionalFetch i nextInstruction = 
+                         let  (current_pc', branched) = if predictBranch (branch_predictor cpu)
+                                                       then (i, True)
+                                                       else (fromIntegral (current_pc + 1), False) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
+                              buffer' = buff V.++ (V.fromList [nextInstruction])
+                              fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
+                              branchPred = (branch_predictor cpu) {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor cpu)) }
+                              cpu' = cpu { fetchUnit = tick fUnit , 
+                                   pc  = (fromIntegral $ current_pc'),
+                                   npc = (fromIntegral $ current_pc'),
+                                   branch_predictor = branchPred}
+                         in  cpu' 
+                unconditionalFetch i nextInstruction =  
+                         let  current_pc' = i
+                              buffer' = buff V.++ (V.fromList [nextInstruction])
+                              fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
+                              cpu' = cpu { fetchUnit = tick fUnit , 
+                                   pc  = (fromIntegral $ current_pc'),
+                                   npc = (fromIntegral $ current_pc')}
+                         in   cpu' 
+                normalFetch nextInstruction =
+                         let  current_pc' = fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
+                              buffer' = buff V.++ (V.fromList [nextInstruction])
+                              fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
+                              cpu' = cpu { fetchUnit = tick fUnit , 
+                                   pc  = (fromIntegral $ current_pc'),
+                                   npc = (fromIntegral $ current_pc')}
+                         in  fetch cpu' (fromIntegral $ current_pc')
+                noopFetch = 
+                         let  current_pc' = fromIntegral (current_pc + 1)
+                              fUnit = (fetchUnit cpu) {cycles = 1 }
+                              cpu' = cpu { fetchUnit = tick fUnit , 
+                                   pc  = (fromIntegral $ current_pc'),
+                                   npc = (fromIntegral $ current_pc')}
+                         in   cpu' 
+                buff = buffer (fetchUnit cpu)
 
                                        

@@ -10,7 +10,6 @@ import Debug.Trace
 import ReservationStation
 import Data.Ord
 import Data.List 
-import ReorderBuffer 
 import Renamer
 
 
@@ -77,7 +76,7 @@ execInstruction cpu (BF source_a i, pc)
           link_reg_val = readRegister regs R14
       in case () of 
                 _ | a == 0        -> ((BF source_a  i, pc), Tuple (1, link_reg_val))
-                _                 -> ((BF source_a  i, pc), Tuple (1, link_reg_val))
+                _                 -> ((BF source_a  i, pc), Tuple (0, link_reg_val))
 execInstruction cpu (B i, pc) =
     let  link_reg_val = readRegister (registers cpu) R14
     in   ((B i, pc), Tuple (1, link_reg_val))
@@ -107,8 +106,7 @@ execInstruction cpu (StoreIdx r b i, pc)
           val    = readRegister (registers cpu) r
           base   = readRegister (registers cpu) b
           offset = i 
-          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + offset)
-      in  ((StoreIdx r b i, pc), Tuple (val, fromIntegral $ base + offset))
+      in  ((StoreIdx r b i, pc), Tuple (val, base + offset))
 execInstruction cpu (StoreBaseIdx r s1 s2, pc)
     = let regs   = registers cpu
           val    = readRegister (registers cpu) r
@@ -165,7 +163,7 @@ execInstruction cpu (And dest source_a source_b, pc)
       in  ((And dest source_a source_b, pc), Const val)
 execInstruction cpu (Not dest source, pc)     
     = let regs = registers cpu
-          val  = complement (readRegister regs source)
+          val  = if (readRegister regs source) == 0 then 1 else 0
       in  ((Not dest source, pc), Const val)
 -- Subroutines
 execInstruction cpu (Ret, pc)     

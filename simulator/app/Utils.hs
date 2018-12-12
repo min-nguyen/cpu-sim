@@ -268,7 +268,7 @@ writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
 
 writeMemoryI :: CPU -> Int -> Int -> Memory
-writeMemoryI cpu i addr = d_memory cpu V.// [(fromIntegral i, addr)]
+writeMemoryI cpu i addr = d_memory cpu V.// [(addr, i)]
 
 
 writeRegister :: Registers -> RegisterNum -> Int -> Registers
@@ -324,7 +324,7 @@ toRegisterNum regNum
                         5 -> R5 
                         6 -> R6
                         7 -> R7
-                        8 -> R0 
+                        8 -> R8 
                         9 -> R9
                         10 -> R10 
                         11 -> R11
@@ -391,7 +391,7 @@ instructionToExecutionUnit instruction =
                             BF _ _ -> BranchUnit
                             Ret -> BranchUnit 
                             SysCall -> BranchUnit
-                            Ret -> BranchUnit
+                            
                             MoveI _ _ -> MemUnit 
                             Move _ _ -> MemUnit 
                             LoadIdx _ _ _ -> MemUnit
@@ -415,7 +415,7 @@ allocateRegStats regstats instrct =
             Lt  d s1 s2         -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             Eq  d s1 s2         -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             Not  d s            -> (setRegStat s  0 . setRegStat d 0) regstats
-            
+            And  d s1 s2        -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             Move   s1 s2        -> (setRegStat s1 0 . setRegStat s2 0) regstats
             MoveI  s1 i         -> (setRegStat s1 0 ) regstats
             LoadIdx d s i       -> (setRegStat s 0 . setRegStat d 0) regstats
@@ -440,6 +440,7 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
             Sub  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             SubI d s  i         -> (f d rsid d_status . f s rsid s1_status)  regstats
             Mult  d s1 s2       -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
+            And  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             Div  d s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             Or  d s1 s2         -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             Lt  d s1 s2         -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
@@ -478,6 +479,7 @@ sameRegs instrct =
         SubI d s  i         -> s == d 
         Mult  d s1 s2       -> s1 == d || s2 == d
         Div  d s1 s2        -> s1 == d || s2 == d
+        And d s1 s2         -> s1 == d || s2 == d
         Or  d s1 s2         -> s1 == d || s2 == d
         Lt  d s1 s2         -> s1 == d || s2 == d
         Eq  d s1 s2         -> s1 == d || s2 == d
@@ -487,11 +489,24 @@ sameRegs instrct =
         MoveI  s1 i         -> False
         LoadIdx d s i       ->  s == d 
         LoadBaseIdx d s1 s2 -> s1 == d || (toRegisterNum s2) == d
-        StoreIdx d s i      ->  s == d 
-        StoreBaseIdx d s1 s2 -> s1 == d || (toRegisterNum s2) == d
+        StoreIdx d s i      -> False
+        StoreBaseIdx d s1 s2 -> False
 
         B i -> False 
         BT r i ->  False
         BF r i ->  False
         Ret -> False 
         SysCall -> False
+
+insertReorderBuffer :: ROBId -> ROBEntry -> ReorderBuffer -> ReorderBuffer
+insertReorderBuffer robId robEntry reorderBuff = 
+    let ReorderBuffer entries = reorderBuff
+        headId = fst $ head entries
+        offset = robId - headId
+        entries' =  replaceNth offset (robId, Just robEntry) entries 
+    in  ReorderBuffer entries'
+    where replaceNth :: Int -> a -> [a] -> [a]
+          replaceNth _ _ [] = []
+          replaceNth n newVal (x:xs)
+           | n == 0 = newVal:xs
+           | otherwise = x:replaceNth (n-1) newVal xs

@@ -32,5 +32,5 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> (x a)) cpu (replicate 400 updateCPU) 
+    let cpu' = foldr (\x a -> (x a)) cpu (replicate 500 updateCPU) 
     print cpu'

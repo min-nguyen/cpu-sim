@@ -65,6 +65,8 @@ parseDIV :: Parser Instruction
 parseDIV = Div <$ string "Div" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseAND :: Parser Instruction
 parseAND = And <$ string "And" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
+parseEQ :: Parser Instruction
+parseEQ = Eq <$ string "Eq" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseOR :: Parser Instruction
 parseOR = Or <$ string "Or" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseLT :: Parser Instruction
@@ -130,6 +132,7 @@ parseInstruction =
     try parseRET <|>
     try parseSYS  <|>
     try parsePrint <|>
+    try parseEQ <|>
     try parsePrintln 
 
 parseAssembly :: Parser [Instruction]

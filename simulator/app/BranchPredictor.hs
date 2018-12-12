@@ -23,6 +23,7 @@ predictBranch branchPredictor =
 updateBranchPredictor :: Bool -> InstructionAndPc -> CPU -> (CPU, Bool)
 updateBranchPredictor branched instrctAndPc cpu = 
     let branchPredictor = branch_predictor cpu
+       
         inc x = if x >= 4 then 4 else x + 1
         dec x = if x <= 1 then 1 else x - 1
 
@@ -36,4 +37,4 @@ updateBranchPredictor branched instrctAndPc cpu =
         branch_table' = Map.adjust (\x -> if branched then inc x else dec x) (branch_reg branchPredictor) (branch_table branchPredictor)
         
         branchPredictor' = branchPredictor {branch_table = branch_table', branch_reg = branch_reg'} 
-    in  (cpu {branch_predictor = branchPredictor'}, correctBranch)
+    in  (cpu {branch_predictor = branchPredictor'}, branched == correctBranch)

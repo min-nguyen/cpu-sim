@@ -79,8 +79,9 @@ updateRSEntries cpu
                                                                                           in    (cp {rs_station = resstation'}, False)
                                                             in  (cp', issued)
                                                             
-                    cycleOrder     = map fst $ sortBy (\(k1, c1) (k2, c2) -> if c1 == c2 && k1 > k2 then GT else if c1 == c2 && k1 < k2 then LT else if c1 > c2 then GT else LT) (map (\(k, (c, x)) -> (k, c)) (Map.toList entries)  )                                          
-                in  foldl   (\cpu  rsid  -> let maybeEntry = Map.lookup rsid (rs_entries $ rs_station cpu)
+                    cycleOrder     = map fst $ sortBy (\(k1, c1) (k2, c2) -> if c1 < c2 then LT else GT) (map (\(k, (c, x)) -> (k, c)) (Map.toList entries)  )                                          
+                in  
+                    foldl   (\cpu  rsid  -> let maybeEntry = Map.lookup rsid (rs_entries $ rs_station cpu)
                                             in  case maybeEntry of 
                                                             Just (cycle, Just entry) ->    
                                                                             let (cpu', issued)  = updateRegStation cpu entry cycle rsid  -- should only issue instruction if regstatuses are (0,0,0) !!    
@@ -96,7 +97,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
         maxCycle    = 1 + (maximum $ map (fst . snd) $ Map.toList (rs_entries $ rs_station cpu) ) :: Int
         higherPriorityEntries = map (snd . snd) $ filter (\(rsId, (cyc, ent)) -> cyc < maxCycle) $ sortBy (comparing (\(rsId, (cyc, ent)) -> cyc))  (Map.toList resentries)
         
-        (cpu', renamedInstruction) = renameInstructionRegs instruction cpu
+        (cpu', renamedInstruction) = (cpu, fst instructionAndPC) -- renameInstructionRegs instruction cpu
         renamedInstructionAndPc = instructionAndPC --(renamedInstruction, snd instructionAndPC)
     in              case renamedInstruction of 
                                     Add  d s1 s2 -> let 
@@ -207,13 +208,14 @@ createRSEntry cpu  statuses   instructionAndPC  =
 
                                                         
                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' s2_status'  v1 v2 0 False)))
-                                    StoreIdx d s i -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
-                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+                                    StoreIdx s1 s2 i -> 
+                                                    let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                        [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                        invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                        [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry  s2 invalidEntries s2_status]
 
-                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
-
-                                                      in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc d_status' s_status' 0 v v 0 False))
+                                                        
+                                                    in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc 0 s1_status' s2_status'  v1 v2 0 False)))
                                     StoreBaseIdx d s1 s2  -> 
                                                     let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
@@ -233,7 +235,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                         invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 s1_status' 0 v1 0 i False) )
+                                                    in  (cpu',  (maxCycle, RSEntry renamedInstructionAndPc s1_status' 0 0 v1 0 i False) )
                                       
                                     
     where   foo maybeEntry  = case maybeEntry of  Nothing -> []
@@ -249,12 +251,12 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                                     LoadBaseIdx  d s1 s2 -> zip [d,s1,(toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
                                                                     StoreBaseIdx d s1 s2 -> zip [d,s1,(toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
                                                                     MoveI d i     -> zip [d] [qd anEntry]
-                                                                    Move d s     -> zip [d] [qd anEntry, qj anEntry]
+                                                                    Move d s     -> zip [d,s] [qd anEntry, qj anEntry]
                                                                     LoadIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
-                                                                    StoreIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    StoreIdx s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     Not d s  -> zip [d, s] [qd anEntry, qj anEntry]
-                                                                    BT d i ->  zip [d] [qd anEntry]
-                                                                    BF d i -> zip [d] [qd anEntry]
+                                                                    BT s i ->  zip [s] [qj anEntry]
+                                                                    BF s i -> zip [s] [qj anEntry]
             compareEntries entries1 existingEntries = foldr (\(regNum) entries ->   if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
                                                                                     else entries) [] entries1
@@ -384,13 +386,13 @@ updateRSEntry cpu  statuses cycle entry  =
 
                                                         
                                                     in  (RSEntry instructionAndPC d_status' s1_status' s2_status'  v1 v2 0 False)
-                                    StoreIdx d s i -> let [d_status, s_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s]
-                                                          [v] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s, s_status)]
+                                    StoreIdx s1 s2 i -> let [s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [s1, s2]
+                                                            [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), (s2, s2_status)]
+                                                            invalidEntries = compareEntries [s1, s2] (map foo higherPriorityEntries) :: [RegisterNum]
+                                                            [s1_status', s2_status'] = [findEntry s1 invalidEntries s1_status, findEntry s2 invalidEntries s2_status]
 
-                                                          invalidEntries = compareEntries [d, s] (map foo higherPriorityEntries) :: [RegisterNum]
-                                                          [d_status', s_status'] = [findEntry d invalidEntries d_status, findEntry s invalidEntries s_status]
-
-                                                      in  (RSEntry instructionAndPC d_status' s_status' 0 v v 0 False)
+                                                            
+                                                        in  (RSEntry instructionAndPC 0 s1_status' s2_status'  v1 v2 0 False)
                                     StoreBaseIdx d s1 s2  -> 
                                                     let [d_status, s1_status, s2_status] = map (fromMaybe 0 . flip getRegStat statuses) [d, s1, (toRegisterNum s2)]
                                                         [v1, v2] = map (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) [(s1, s1_status), ( (toRegisterNum s2), s2_status)]
@@ -410,7 +412,7 @@ updateRSEntry cpu  statuses cycle entry  =
                                                         invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
                                                         [s1_status'] = [findEntry s1 invalidEntries s1_status]
 
-                                                    in  (RSEntry instructionAndPC 0 s1_status' 0 v1 0 i False) 
+                                                    in  (RSEntry instructionAndPC s1_status' 0 0 v1 0 i False) 
                                       
                                     
     where foo maybeEntry  = case maybeEntry of  Nothing -> []
@@ -428,13 +430,13 @@ updateRSEntry cpu  statuses cycle entry  =
                                                                     LoadBaseIdx  d s1 s2 -> zip [d,s1, (toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
                                                                     StoreBaseIdx d s1 s2 -> zip [d,s1, (toRegisterNum s2)] [qd anEntry, qj anEntry, qk anEntry]
                                                                     MoveI d i     -> zip [d] [qd anEntry]
-                                                                    Move d s     -> zip [d] [qd anEntry, qj anEntry]
+                                                                    Move d s     -> zip [d,s] [qd anEntry, qj anEntry]
                                                                     LoadIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
-                                                                    StoreIdx d s i -> zip [d, s] [qd anEntry, qj anEntry]
+                                                                    StoreIdx s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     Not d s  -> zip [d, s] [qd anEntry, qj anEntry]
-                                                                    BT d i ->  zip [d] [qd anEntry]
-                                                                    
-                                                                    BF d i -> zip [d] [qd anEntry]
+                                                                    BT s i ->  zip [s] [qj anEntry]
+                                                                    B i -> []
+                                                                    BF s i -> zip [s] [qj anEntry]
           compareEntries entries1 existingEntries = foldr (\(regNum) entries ->     if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
                                                                                     else entries) [] entries1
@@ -474,14 +476,14 @@ issueInstruction cpu rs_entry rsId rsCycle
                                                                                                  Nothing -> (cpu { executionUnits = units { memUnit = unit { instruction = Just instructionAndPC, 
                                                                                                                                                              rs_id = rsId, 
                                                                                                                                                              rs_cycle = rsCycle,
-                                                                                                                                                             cycles = 4 }}}, True )
+                                                                                                                                                             cycles = 1 }}}, True )
                                                     BranchUnit ->   let units = executionUnits cpu
                                                                         unit  = branchUnit units
                                                                     in  case instruction unit of Just _ ->  (cpu, False)
                                                                                                  Nothing -> (cpu { executionUnits = units { branchUnit = unit { instruction = Just instructionAndPC, 
                                                                                                                                                                 rs_id = rsId, 
                                                                                                                                                                 rs_cycle = rsCycle,
-                                                                                                                                                                cycles = 3 }}}, True )
+                                                                                                                                                                cycles = 1 }}}, True )
                         in (cpu', issueAgain)
 
 

@@ -25,7 +25,7 @@ updateFetch cpu = let cpu' = fetch cpu current_pc
                   where current_pc = if npc cpu == pc cpu 
                                      then fromIntegral (pc cpu) 
                                      else fromIntegral $ npc cpu
-
+                         
 
 fetch :: CPU -> Int -> CPU 
 fetch cpu current_pc = 
@@ -35,7 +35,7 @@ fetch cpu current_pc =
           let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
           in   trace (show $ fst nextInstruction) $
                case fst nextInstruction of 
-                              B i    -> conditionalFetch i nextInstruction
+                              B i    -> unconditionalFetch i nextInstruction
                               BT s i -> conditionalFetch i nextInstruction
                               BF s i -> conditionalFetch i nextInstruction 
                               Ret    -> let link_reg_val = r14 $ registers cpu 

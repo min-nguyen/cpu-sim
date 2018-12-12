@@ -41,7 +41,7 @@ updateExecUnits cpu =
                                     unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
                                     rsentries' = allocateRSEntry rsentries rsId
-                                    regstats' =  trace ("Executing " ++ show instrct ++ " into reorder buffer with PC " ++ show rsCycle ++ " \n") $ allocateRegStats regstats instrct --
+                                    regstats' =   allocateRegStats regstats instrct --
                                     rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
                                     
                                     cpu'' =  cpu' { rs_station = rsStation'}
@@ -168,7 +168,7 @@ execInstruction cpu (Not dest source, pc)
 -- Subroutines
 execInstruction cpu (Ret, pc)     
     = ((Ret, pc), Const 1)
-execInstruction cpu (SysCall, pc)     
-    = ((SysCall, pc), Const 1)
+execInstruction cpu (End, pc)     
+    = ((End, pc), Const 1)
 execInstruction cpu (NoOp, pc)     
     = ((NoOp, pc), Const 0)

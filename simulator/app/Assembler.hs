@@ -93,8 +93,9 @@ parseBF :: Parser Instruction
 parseBF = BF <$ string "BF" <* space <*> parseRegister <* space <*> parseInt
 parseRET :: Parser Instruction
 parseRET = Ret <$ string "Ret" 
-parseSYS :: Parser Instruction
-parseSYS = SysCall <$ string "SysCall" 
+parseEND :: Parser Instruction
+parseEND = End <$ string "End" 
+
 parsePrint :: Parser Instruction
 parsePrint = Print <$ string "Print" <* space <*> parseRegister
 parsePrintln :: Parser Instruction
@@ -116,6 +117,7 @@ parseInstruction =
     try  parseMUL  <|>
     try parseDIV  <|>
     try parseAND  <|>
+    try parseEND <|>
     try parseOR  <|>
     try parseLT  <|>
     try parseNOT  <|>
@@ -130,7 +132,6 @@ parseInstruction =
     try parseBF  <|>
     try parseB <|>
     try parseRET <|>
-    try parseSYS  <|>
     try parsePrint <|>
     try parseEQ <|>
     try parsePrintln 

@@ -81,7 +81,7 @@ commitReorderBuffer entry reorderBuff cpu =
             ((Not d x, pc), execResult)      -> case execResult of
                                                         Const value ->
                                                             let registers' = writeRegister (registers cpu') d value 
-                                                            in  trace (show value)  (cpu' {registers = registers', rob = reorderBuff'}, True)
+                                                            in  (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((AddI s1 s2 i, pc) ,execResult) -> case execResult of
                                                         Const value ->
                                                             let registers' = writeRegister (registers cpu') s1 value 
@@ -115,7 +115,7 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                     let memory' = writeMemoryI cpu' (fromIntegral value) addr
                                                                     in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
             ((B i, pc), execResult)         -> case execResult of
-                                                        Tuple (value, link) -> (cpu' {npc = i, rob = reorderBuff'}, False)     
+                                                        Tuple (value, link) -> (cpu' {npc = i, rob = reorderBuff'}, True)     
             ((BT  s1    i, pc), execResult) ->  case execResult of
                                                         Tuple (value, link) -> 
                                                             let (cpu_', correctBranch) = case value of  0 -> (updateBranchPredictor False (BT  s1    i, pc) cpu')
@@ -123,7 +123,7 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                 npc' = if correctBranch then npc cpu_' else ( case value of 0 -> pc + 1
                                                                                                                             1 -> i)
                                                                 cpu'' = (cpu_' {npc = npc'})
-                                                            in  trace ("CORRECT BRANCH, VALUE = " ++ show (correctBranch, value)) $
+                                                            in  
                                                                 if correctBranch 
                                                                 then (cpu'' {rob = reorderBuff'}, True)
                                                                 else (flushPipeline cpu'', False) -- << ---
@@ -137,9 +137,8 @@ commitReorderBuffer entry reorderBuff cpu =
                                                             in  if correctBranch 
                                                                 then (cpu'' {rob = reorderBuff'}, True)
                                                                 else (flushPipeline cpu'', False) -- << ---
-            ((Ret, pc) ,execResult)         -> case execResult of
-                                                            Const value -> (cpu', False)
-            ((SysCall, pc) ,execResult)     -> case execResult of
-                                                            Const value -> (cpu', False)
+            ((End, pc) ,execResult)     -> case execResult of
+                                                            Const value -> (cpu' {rob = reorderBuff',
+                                                                                  active = False} , False)
 
-    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\nCPU AFTER : \n" ++ show cpu'' ++ "\n\n") cpu''
+    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") cpu''

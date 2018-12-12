@@ -179,7 +179,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                     in  (cpu',  (maxCycle, (RSEntry renamedInstructionAndPc d_status' s1_status' 0  v1 0 0 False)))
                                     
                                     B   i       -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 i 0 i False ))
-                                    SysCall     -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 0 0 0 False ))
+                                    End         -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 0 0 0 False ))
                                     Label i     -> (cpu',  (maxCycle, RSEntry renamedInstructionAndPc 0 0 0 i 0 i False ))
                                     BT  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
                                                         v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
@@ -256,6 +256,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
                                                                     StoreIdx s1 s2 i -> zip [s1, s2] [qj anEntry, qk anEntry]
                                                                     Not d s  -> zip [d, s] [qd anEntry, qj anEntry]
                                                                     BT s i ->  zip [s] [qj anEntry]
+                                                                    End -> []
                                                                     BF s i -> zip [s] [qj anEntry]
             compareEntries entries1 existingEntries = foldr (\(regNum) entries ->   if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
@@ -357,7 +358,7 @@ updateRSEntry cpu  statuses cycle entry  =
                                                     in  (RSEntry instructionAndPC d_status' s1_status' 0  v1 0 0 False)
                                     
                                     B   i       -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
-                                    SysCall     -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
+                                    End     -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
                                     Label i     -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
                                     BT  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
                                                         v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
@@ -437,6 +438,7 @@ updateRSEntry cpu  statuses cycle entry  =
                                                                     BT s i ->  zip [s] [qj anEntry]
                                                                     B i -> []
                                                                     BF s i -> zip [s] [qj anEntry]
+                                                                    End -> []
           compareEntries entries1 existingEntries = foldr (\(regNum) entries ->     if length (filter (\existingEntry -> length (filter (\(regnum, regentry) -> regnum == regNum && (regentry == 0)) existingEntry) > 0 ) existingEntries) > 0
                                                                                     then ((regNum):entries)
                                                                                     else entries) [] entries1

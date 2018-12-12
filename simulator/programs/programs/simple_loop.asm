@@ -1,8 +1,0 @@
-ADDI X1 X0 5
-loop:
-BEQ X1 X0 end
-ADDI X2 X2 5
-ADDI X1 X1 -1
-BEQ X0 X0 loop
-end:
-HALT

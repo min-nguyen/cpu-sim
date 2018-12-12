@@ -27,7 +27,7 @@ updateBranchPredictor branched instrctAndPc cpu =
         inc x = if x >= 4 then 4 else x + 1
         dec x = if x <= 1 then 1 else x - 1
 
-        correctBranch        = fromMaybe True $ Map.lookup (snd instrctAndPc) (predictions branchPredictor)
+        correctBranch        = fromJust $ Map.lookup (snd instrctAndPc) (predictions branchPredictor)
         
         branch_reg' = case branch_reg branchPredictor of 
                         B00 -> if branched then B01 else B00

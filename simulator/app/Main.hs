@@ -15,15 +15,17 @@ import Debug.Trace
 import ReservationStation
 import ReorderBuffer
 
-updateCPU :: CPU -> CPU 
-updateCPU cpu = 
+updateCPU :: CPU -> Int -> (CPU, Int)
+updateCPU cpu i = 
     let   
         cpu1 = updateFetch cpu
         cpu2 = updateDecode cpu1
         cpu3 = updateRS  cpu2
         cpu4 = updateExec  cpu3
         cpu5 = updateROB cpu4
-    in  cpu5
+    in  if active cpu5 
+        then updateCPU cpu5 (i + 1)
+        else (cpu5, i)
 
 main :: IO ()
 main = do 
@@ -32,5 +34,6 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     let cpu = initCPU instructions 
-    let cpu' = foldr (\x a -> (x a)) cpu (replicate 500 updateCPU) 
+    let (cpu', count) = updateCPU cpu 0
     print cpu'
+    print count

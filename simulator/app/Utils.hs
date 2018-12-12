@@ -79,7 +79,7 @@ data Assembly dest source immediate
         | BT dest immediate -- Branch to label if r == 1
         | BF dest immediate -- Branch to label if r == 0
         | Ret                                -- Branch to address in link register.
-        | SysCall                            -- Terminates execution.
+        | End                            -- Terminates execution.
         -- Debugging
         | Print  source -- Print value in a register.
         | PrintC source -- Print value in a register as an ASCII character.
@@ -119,11 +119,12 @@ data CPU                = CPU {
                             fetchUnit       :: Unit,
                             decodeUnit      :: Unit,
                             branch_predictor :: BranchPredictor,
-                            renamer         :: RenamingTable
+                            renamer         :: RenamingTable,
+                            active          :: Bool
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer) = 
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active) = 
      
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
@@ -262,7 +263,7 @@ initCPU instructions = let i_mem = V.fromList instructions
                            dunit = initUnit Decode_Unit
                            branch_pred = initBranchPredictor
                            renamer = initRenamingTable
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -390,7 +391,7 @@ instructionToExecutionUnit instruction =
                             BT _ _ -> BranchUnit 
                             BF _ _ -> BranchUnit
                             Ret -> BranchUnit 
-                            SysCall -> BranchUnit
+                            End -> BranchUnit
                             
                             MoveI _ _ -> MemUnit 
                             Move _ _ -> MemUnit 
@@ -427,7 +428,7 @@ allocateRegStats regstats instrct =
             BT r i -> (setRegStat r 0 ) regstats
             BF r i -> (setRegStat r 0 ) regstats
             Ret -> regstats 
-            SysCall -> regstats 
+            End -> regstats 
             Print _ -> regstats 
             PrintLn -> regstats
 
@@ -458,7 +459,7 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
             BT r i -> (f r rsid s1_status) regstats
             BF r i -> (f r rsid s1_status) regstats
             Ret -> regstats 
-            SysCall -> regstats
+            End -> regstats
 
 
 allocateRSEntry :: RSs -> RSId -> RSs 
@@ -496,7 +497,7 @@ sameRegs instrct =
         BT r i ->  False
         BF r i ->  False
         Ret -> False 
-        SysCall -> False
+        End -> False
 
 insertReorderBuffer :: ROBId -> ROBEntry -> ReorderBuffer -> ReorderBuffer
 insertReorderBuffer robId robEntry reorderBuff = 

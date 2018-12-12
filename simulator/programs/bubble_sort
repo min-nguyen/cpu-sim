@@ -21,10 +21,10 @@ BT R2 10
 LoadIdx R3 R0 0
 LoadIdx R4 R0 1
 Lt R2 R3 R4
-BT R2 26
+BT R2 27
 StoreIdx R3 R0 1
 StoreIdx R4 R0 0
 Add R5 R5 R6
 AddI R0 R0 1
 B 14
-Move R0 R0
+End

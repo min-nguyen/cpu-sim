@@ -33,7 +33,7 @@ fetch cpu current_pc =
           then cpu
           else 
           let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
-          in   trace (show $ fst nextInstruction) $
+          in  
                case fst nextInstruction of 
                               B i    -> unconditionalFetch i nextInstruction
                               BT s i -> conditionalFetch i nextInstruction

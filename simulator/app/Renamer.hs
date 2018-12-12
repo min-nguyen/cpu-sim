@@ -45,7 +45,7 @@ renameInstructionRegs instrct cpu =
         BT r i ->  (cpu, BT (remapRegister r cpu) i)
         BF r i ->  (cpu, BF (remapRegister r cpu) i)
         Ret -> (cpu, Ret) 
-        SysCall -> (cpu, SysCall) 
+        End -> (cpu, End) 
         Label i -> (cpu, Label i)
 
     where rename3regs d s1 s2 = let (cpu', d', available) = renameRegister d cpu
@@ -116,7 +116,7 @@ updateFreeRegisters instruction cpu =
             BT r i ->  free_regs
             BF r i ->  free_regs
             Ret -> free_regs 
-            SysCall -> free_regs
+            End -> free_regs
             Label i -> free_regs
     in  cpu {renamer = (renamer cpu) {freeRegisters = free_regs'}}
 

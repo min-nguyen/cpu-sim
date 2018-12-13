@@ -12,13 +12,13 @@ import Utils
 import Data.List
 import Data.Ord
 
-getFreeRegister :: CPU -> RegisterNum -> Maybe RegisterNum
-getFreeRegister cpu reg_num = case available_regs of [] -> Nothing 
-                                                     xs -> if reg_num `elem` xs 
-                                                           then Just reg_num
-                                                           else Just $ head xs
+getFreeRegister :: CPU -> RegisterNum -> [RegisterNum] -> Maybe RegisterNum
+getFreeRegister cpu reg_num source_reg_nums = case available_regs of    [] -> Nothing 
+                                                                        xs -> if reg_num `elem` xs 
+                                                                              then Just reg_num
+                                                                              else Just $ head xs
     where free_regs = freeRegisters (renamer cpu)  
-          available_regs = map fst $ filter (\(r, b) -> b == True) (Map.toList free_regs)
+          available_regs = map fst $ filter (\(r, b) -> b == True && not (r `elem` source_reg_nums)) (Map.toList free_regs)
 
 renameInstructionRegs :: Instruction -> CPU -> (CPU, Instruction)
 renameInstructionRegs instrct cpu =
@@ -33,13 +33,13 @@ renameInstructionRegs instrct cpu =
         Lt  d s1 s2         -> let (cpu', (d', s1', s2')) = rename3regs d s1 s2 in (cpu', Lt d' s1' s2')
         Eq  d s1 s2         -> let (cpu', (d', s1', s2')) = rename3regs d s1 s2 in (cpu', Eq d' s1' s2')
         Not  d s            -> let (cpu', (d', s')) = rename2regs d s in (cpu', Not d' s')
-        
+        And d s1 s2         -> let (cpu', (d', s1', s2')) = rename3regs d s1 s2 in (cpu', And d' s1' s2')
         Move   d s          ->  let (cpu', (d', s')) = rename2regs d s in (cpu', Move d' s')
         MoveI  s1 i         ->  let (cpu', s1') = rename1reg s1 in (cpu', MoveI s1' i)
         LoadIdx d s i       ->  let (cpu', (d', s')) = rename2regs d s in (cpu', LoadIdx d' s' i)
-        LoadBaseIdx d s1 s2 -> let (cpu', (d', s1', s2')) = rename3regs d s1 (toRegisterNum s2) in (cpu', LoadBaseIdx d' s1' (fromRegisterNum s2'))
+        LoadBaseIdx d s1 s2 -> let (cpu', (d', s1', s2')) = rename3regs d s1 s2 in (cpu', LoadBaseIdx d' s1' s2')
         StoreIdx d s i      ->  let (cpu', (d', s')) = remap2regs d s in (cpu', StoreIdx d' s' i)
-        StoreBaseIdx d s1 s2 -> let (cpu', (d', s1', s2')) = remap3regs d s1 (toRegisterNum s2) in (cpu', StoreBaseIdx d' s1' (fromRegisterNum s2'))
+        StoreBaseIdx d s1 s2 -> let (cpu', (d', s1', s2')) = remap3regs d s1 s2 in (cpu', StoreBaseIdx d' s1' s2')
     
         B i -> (cpu, B i)
         BT r i ->  (cpu, BT (remapRegister r cpu) i)
@@ -48,19 +48,20 @@ renameInstructionRegs instrct cpu =
         End -> (cpu, End) 
         Label i -> (cpu, Label i)
 
-    where rename3regs d s1 s2 = let (cpu', d', available) = renameRegister d cpu
-                                    (cpu'', d'') = if sameRegs instrct then (cpu, d) else (cpu', d')
-                                    s1' = remapRegister s1 cpu
+    where rename3regs d s1 s2 = let s1' = remapRegister s1 cpu
                                     s2' = remapRegister s2 cpu
-                                in  (cpu'', (d'', s1', s2'))
-          rename2regs d s     = let (cpu', d', available) = renameRegister d cpu
-                                    (cpu'', d'') = if sameRegs instrct then (cpu, d) else (cpu', d')
-                                    s' = remapRegister s cpu
                                     
-                                in  (cpu'', (d'', s'))
-          rename1reg  d       = let (cpu', d', available) = renameRegister d cpu
-                                    (cpu'', d'') = if sameRegs instrct then (cpu, d) else (cpu', d')
-                                in  (cpu'', d'' )
+                                    (cpu', d', available) = renameRegister d [s1', s2'] cpu
+                                    
+                                in  (cpu', (d', s1', s2'))
+          rename2regs d s     = let 
+                                    s' = remapRegister s cpu
+                                    (cpu', d', available) = renameRegister d [s'] cpu
+                                    
+                                in  (cpu', (d', s'))
+          rename1reg  d       = let (cpu', d', available) = renameRegister d [] cpu
+                                    
+                                in  (cpu', d' )
           remap3regs d s1 s2  = let d' = remapRegister d cpu
                                     s1' = remapRegister s1 cpu 
                                     s2' = remapRegister s2 cpu
@@ -71,15 +72,15 @@ renameInstructionRegs instrct cpu =
                                                                 
 
 
-renameRegister :: RegisterNum -> CPU -> (CPU, RegisterNum, Bool)
-renameRegister reg_num cpu = 
-        case getFreeRegister cpu reg_num  of 
-            Nothing -> let rename_table' = Map.insert reg_num reg_num rename_table
-                       in trace ("no free reg for : " ++ show reg_num) $ (cpu {renamer = (renamer cpu) {renameTable = rename_table'}}, reg_num, False)
+renameRegister :: RegisterNum -> [RegisterNum] -> CPU -> (CPU, RegisterNum, Bool)
+renameRegister reg_num source_reg_nums cpu = 
+        case getFreeRegister cpu reg_num source_reg_nums of 
+            Nothing -> (cpu, reg_num, False)
             Just r' -> let rename_table' = Map.insert reg_num r' rename_table
-                          
-                           free_regs'    = Map.insert reg_num False free_regs
-                       in (cpu {renamer = (renamer cpu) {renameTable = rename_table', freeRegisters = free_regs'}}, r', True)
+                           rename_table'' = Map.insert r' reg_num rename_table'
+                           free_regs'    = Map.insert r' False free_regs
+                           
+                       in trace ("RENAMING " ++ show reg_num ++ " TO " ++ show r' ++ "\n") (cpu {renamer = (renamer cpu) {renameTable = rename_table'', freeRegisters = free_regs'}}, r', True)
     where rename_table = renameTable (renamer cpu)   
           free_regs = freeRegisters (renamer cpu)
 
@@ -104,7 +105,7 @@ updateFreeRegisters instruction cpu =
             Lt  d s1 s2         -> Map.insert d True free_regs
             Eq  d s1 s2         -> Map.insert d True free_regs
             Not  d s            -> Map.insert d True free_regs
-            
+            And d s1 s2         ->  Map.insert d True free_regs
             Move   s1 s2        -> Map.insert s1 True free_regs
             MoveI  s1 i         -> Map.insert s1 True free_regs
             LoadIdx d s i       -> Map.insert d True free_regs

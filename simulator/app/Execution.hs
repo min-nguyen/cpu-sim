@@ -31,7 +31,7 @@ updateExecUnits cpu =
                         then    let instrct = fst instructionAndPc
 
                                     robEntry = euToROB $ execInstruction cpuArg instructionAndPc
-                                    rsId      = rs_id unitArg  
+                                    rsId      = trace ("Executed " ++ show robEntry ++ " \n ") $ rs_id unitArg  
                                     rsCycle   = rs_cycle unitArg
                                     cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
                                     
@@ -50,7 +50,7 @@ updateExecUnits cpu =
                                                                     Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit' {cycles = (cycles unit') - 1 }}}  
                                                                     Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }}} 
                                       
-                                in  cpu'''
+                                in cpu'''
                         else case unitId unitArg of Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
                                                     Int_Unit2 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit2 = unitArg {cycles = (cycles unitArg) - 1}}}  
                                                     Mem_Unit  -> cpuArg { executionUnits = (executionUnits cpuArg) { memUnit = unitArg {cycles = (cycles unitArg) - 1}}}  
@@ -97,7 +97,7 @@ execInstruction cpu (LoadIdx d s i, pc)
 execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
           base   = readRegister (registers cpu) s1
-          r_offset = readRegister (registers cpu) (toRegisterNum s2) 
+          r_offset = readRegister (registers cpu) s2 
           loadedWord = (d_memory cpu) V.! (fromIntegral $ base + r_offset)
       in  ((LoadBaseIdx d s1 s2, pc), Const loadedWord)    
 -- STORE
@@ -111,7 +111,7 @@ execInstruction cpu (StoreBaseIdx r s1 s2, pc)
     = let regs   = registers cpu
           val    = readRegister (registers cpu) r
           base   = readRegister (registers cpu) s1
-          r_offset = readRegister (registers cpu) (toRegisterNum s2)
+          r_offset = readRegister (registers cpu) s2
       in  ((StoreBaseIdx r s1 s2, pc), Tuple (val, fromIntegral $ base + r_offset))
 -- ARITHMETIC
 execInstruction cpu (Add dest source_a source_b, pc)     
@@ -170,5 +170,3 @@ execInstruction cpu (Ret, pc)
     = ((Ret, pc), Const 1)
 execInstruction cpu (End, pc)     
     = ((End, pc), Const 1)
-execInstruction cpu (NoOp, pc)     
-    = ((NoOp, pc), Const 0)

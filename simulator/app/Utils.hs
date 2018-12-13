@@ -59,9 +59,9 @@ data Assembly dest source immediate
         -- | MoveLabel    RegIdx LabelAddr                                    -- r <- *label
         | Move         dest source                   -- r <- [from]
         | LoadIdx      dest source immediate   -- r <- [[base] + offset]
-        | LoadBaseIdx  dest source immediate -- r <- [[base] + [R_offset]]
+        | LoadBaseIdx  dest source source -- r <- [[base] + [R_offset]]
         | StoreIdx     dest source immediate   -- r -> [[base] + offset]
-        | StoreBaseIdx dest source immediate -- r -> [[base] + [R_offset]]
+        | StoreBaseIdx source source source -- r -> [[base] + [R_offset]]
         -- Arithmetic/Logic
         | Add  dest source source -- r <- [x] + [y]
         | AddI dest source immediate    -- r <- [x] + i
@@ -80,12 +80,7 @@ data Assembly dest source immediate
         | BF dest immediate -- Branch to label if r == 0
         | Ret                                -- Branch to address in link register.
         | End                            -- Terminates execution.
-        -- Debugging
-        | Print  source -- Print value in a register.
-        | PrintC source -- Print value in a register as an ASCII character.
-        | PrintLn                -- Print a newline.
         -- Extra
-        | NoOp
         | Label immediate
         deriving Show
 
@@ -120,11 +115,12 @@ data CPU                = CPU {
                             decodeUnit      :: Unit,
                             branch_predictor :: BranchPredictor,
                             renamer         :: RenamingTable,
-                            active          :: Bool
+                            active          :: Bool,
+                            counter         :: Int
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active) = 
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter) = 
      
         "DataMemory: " ++ show dmem ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
@@ -229,13 +225,13 @@ data RenamingTable      = RenamingTable {
                         } deriving Show
 
 initRenamingTable :: RenamingTable
-initRenamingTable = RenamingTable (Map.fromList []) (Map.fromList (zip allRegNums (replicate 16 True)))
+initRenamingTable = RenamingTable (Map.fromList (zip allRegNums allRegNums)) (Map.fromList (zip allRegNums (replicate 16 True)))
 
 initBranchPredictor :: BranchPredictor
 initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
 
 initReorderBuffer :: ReorderBuffer
-initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 10]]
+initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 20]]
 
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0), (R8, 0), (R9, 0), (R10, 0), (R11, 0), (R12, 0), (R13, 0), (R14, 0), (R15, 0)]
@@ -263,7 +259,7 @@ initCPU instructions = let i_mem = V.fromList instructions
                            dunit = initUnit Decode_Unit
                            branch_pred = initBranchPredictor
                            renamer = initRenamingTable
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -385,8 +381,6 @@ instructionToExecutionUnit instruction =
                             Or _ _ _ -> IntUnit 
                             And _ _ _ -> IntUnit 
                             Not _ _ -> IntUnit
-                            Print _ -> IntUnit 
-                            PrintLn -> IntUnit 
                             B  _ -> BranchUnit
                             BT _ _ -> BranchUnit 
                             BF _ _ -> BranchUnit
@@ -420,17 +414,15 @@ allocateRegStats regstats instrct =
             Move   s1 s2        -> (setRegStat s1 0 . setRegStat s2 0) regstats
             MoveI  s1 i         -> (setRegStat s1 0 ) regstats
             LoadIdx d s i       -> (setRegStat s 0 . setRegStat d 0) regstats
-            LoadBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat (toRegisterNum s2) 0 . setRegStat d 0) regstats
+            LoadBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
             StoreIdx d s i      -> (setRegStat s 0 . setRegStat d 0) regstats
-            StoreBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat (toRegisterNum s2) 0 . setRegStat d 0) regstats
+            StoreBaseIdx d s1 s2 -> (setRegStat s1 0 . setRegStat s2 0 . setRegStat d 0) regstats
 
             B i -> regstats 
             BT r i -> (setRegStat r 0 ) regstats
             BF r i -> (setRegStat r 0 ) regstats
             Ret -> regstats 
             End -> regstats 
-            Print _ -> regstats 
-            PrintLn -> regstats
 
 deallocateRegStats :: RegisterStatuses -> Instruction -> RSId -> Int -> Int -> Int -> RegisterStatuses
 deallocateRegStats regstats instrct rsid d_status s1_status s2_status = 
@@ -451,9 +443,9 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
             Move   s1 s2        -> (f s1 rsid s1_status . f s2 rsid s2_status) regstats
             MoveI  s1 i         -> (f s1 rsid s1_status) regstats
             LoadIdx d s i       -> (f s rsid s1_status . f d rsid d_status) regstats
-            LoadBaseIdx d s1 s2 -> (f s1 rsid s1_status . f (toRegisterNum s2) rsid s2_status . f d rsid d_status) regstats
+            LoadBaseIdx d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
             StoreIdx d s i      -> (f s rsid s1_status. f d rsid d_status) regstats
-            StoreBaseIdx d s1 s2 -> (f s1 rsid s1_status . f (toRegisterNum s2) rsid s2_status . f d rsid d_status) regstats
+            StoreBaseIdx d s1 s2 -> (f s1 rsid s1_status . f s2 rsid s2_status . f d rsid d_status) regstats
 
             B i -> regstats 
             BT r i -> (f r rsid s1_status) regstats
@@ -489,7 +481,7 @@ sameRegs instrct =
         Move   s1 s2        -> s1 == s2 
         MoveI  s1 i         -> False
         LoadIdx d s i       ->  s == d 
-        LoadBaseIdx d s1 s2 -> s1 == d || (toRegisterNum s2) == d
+        LoadBaseIdx d s1 s2 -> s1 == d || s2 == d
         StoreIdx d s i      -> False
         StoreBaseIdx d s1 s2 -> False
 

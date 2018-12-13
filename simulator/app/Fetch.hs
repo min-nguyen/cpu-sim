@@ -38,11 +38,7 @@ fetch cpu current_pc =
                               B i    -> unconditionalFetch i nextInstruction
                               BT s i -> conditionalFetch i nextInstruction
                               BF s i -> conditionalFetch i nextInstruction 
-                              Ret    -> let link_reg_val = r14 $ registers cpu 
-                                        in unconditionalFetch link_reg_val nextInstruction
-                              Label i -> noopFetch
-                              PrintLn -> noopFetch 
-                              Print _ -> noopFetch
+                              
                               _      -> normalFetch nextInstruction                          
           where conditionalFetch i nextInstruction = 
                          let  (current_pc', branched) = if predictBranch (branch_predictor cpu)

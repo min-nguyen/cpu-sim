@@ -29,7 +29,7 @@ type Parser = Parsec Void String
 
 
 parseInt :: Parser Int
-parseInt = (decimal) 
+parseInt = decimal
 
 parseRegister :: Parser RegisterNum
 parseRegister = 
@@ -80,11 +80,11 @@ parseMOVEI = MoveI <$ string "MoveI" <* space <*> parseRegister <* space <*> par
 parseLOADIDX :: Parser Instruction
 parseLOADIDX = LoadIdx <$ string "LoadIdx" <* space <*> parseRegister <* space <*> parseRegister  <* space  <*> parseInt
 parseLOADBASEIDX :: Parser Instruction
-parseLOADBASEIDX = LoadBaseIdx <$ string "LoadBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseLOADBASEIDX = LoadBaseIdx <$ string "LoadBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseSTOREIDX :: Parser Instruction
 parseSTOREIDX = StoreIdx <$ string "StoreIdx" <* space <*> parseRegister <* space <*> parseRegister  <* space  <*> parseInt
 parseSTOREBASEIDX :: Parser Instruction
-parseSTOREBASEIDX = StoreBaseIdx <$ string "StoreBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseInt
+parseSTOREBASEIDX = StoreBaseIdx <$ string "StoreBaseIdx" <* space <*> parseRegister <* space <*> parseRegister <* space <*> parseRegister
 parseB :: Parser Instruction
 parseB = B <$ string "B" <* space <*> parseInt
 parseBT :: Parser Instruction
@@ -95,11 +95,6 @@ parseRET :: Parser Instruction
 parseRET = Ret <$ string "Ret" 
 parseEND :: Parser Instruction
 parseEND = End <$ string "End" 
-
-parsePrint :: Parser Instruction
-parsePrint = Print <$ string "Print" <* space <*> parseRegister
-parsePrintln :: Parser Instruction
-parsePrintln = PrintLn <$ string "PrintLn" 
 parseLABEL :: Parser Instruction
 parseLABEL = Utils.Label <$ string "Label" <*  space <*> parseInt
 -- sc :: Parser ()
@@ -132,9 +127,7 @@ parseInstruction =
     try parseBF  <|>
     try parseB <|>
     try parseRET <|>
-    try parsePrint <|>
-    try parseEQ <|>
-    try parsePrintln 
+    try parseEQ 
 
 parseAssembly :: Parser [Instruction]
 parseAssembly = sepEndBy1 parseInstruction eol <* eof

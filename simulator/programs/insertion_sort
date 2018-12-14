@@ -1,0 +1,36 @@
+MoveI R1 5
+StoreIdx R1 R0 1
+MoveI R1 67
+StoreIdx R1 R0 2
+MoveI R1 9
+StoreIdx R1 R0 3
+MoveI R1 34
+StoreIdx R1 R0 4
+MoveI R1 4
+StoreIdx R1 R0 5
+MoveI R1 2
+StoreIdx R1 R0 6
+MoveI R5 0
+MoveI R6 0
+MoveI R7 2
+MoveI R8 7
+Lt R0 R7 R8
+BF R0 35
+LoadIdx R5 R7 0
+SubI R6 R7 1
+MoveI R0 1
+Lt R1 R6 R0
+Not R1 R1
+BF R1 32
+LoadIdx R3 R6 0
+Lt R2 R5 R3
+And R1 R1 R2
+BF R1 32
+LoadIdx R4 R6 0
+StoreIdx R4 R6 1
+SubI R6 R6 1
+B 20
+StoreIdx R5 R6 1
+AddI R7 R7 1
+B 16
+End

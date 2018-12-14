@@ -482,14 +482,14 @@ issueInstruction cpu rs_entry rsId rsCycle
                                                                                                  Nothing -> (cpu { executionUnits = units { memUnit = unit { instruction = Just instructionAndPC, 
                                                                                                                                                              rs_id = rsId, 
                                                                                                                                                              rs_cycle = rsCycle,
-                                                                                                                                                             cycles = 1 }}}, True )
+                                                                                                                                                             cycles = 4 }}}, True )
                                                     BranchUnit ->   let units = executionUnits cpu
                                                                         unit  = branchUnit units
                                                                     in  case instruction unit of Just _ ->  (cpu, False)
                                                                                                  Nothing -> (cpu { executionUnits = units { branchUnit = unit { instruction = Just instructionAndPC, 
                                                                                                                                                                 rs_id = rsId, 
                                                                                                                                                                 rs_cycle = rsCycle,
-                                                                                                                                                                cycles = 1 }}}, True )
+                                                                                                                                                                cycles = 3 }}}, True )
                         in (cpu', issueAgain)
 
 

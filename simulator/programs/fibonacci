@@ -1,0 +1,27 @@
+MoveI R0 1
+StoreIdx R0 R14 3
+MoveI R0 1
+StoreIdx R0 R14 2
+MoveI R0 1
+StoreIdx R0 R14 1
+LoadIdx R0 R14 1
+MoveI R1 10
+Lt R0 R0 R1
+BF R0 26
+LoadIdx R1 R14 3
+LoadIdx R2 R14 2
+Add R1 R1 R2
+StoreIdx R1 R14 0
+LoadIdx R1 R14 2
+StoreIdx R1 R14 3
+LoadIdx R1 R14 0
+StoreIdx R1 R14 2
+LoadIdx R1 R14 1
+MoveI R2 1
+Add R1 R1 R2
+StoreIdx R1 R14 1
+LoadIdx R0 R14 1
+MoveI R1 10
+Lt R0 R0 R1
+BT R0 10
+End

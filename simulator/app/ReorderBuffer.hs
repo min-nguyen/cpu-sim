@@ -50,7 +50,7 @@ commitReorderBuffer entry reorderBuff cpu =
             ((Add  d s1 s2, pc), execResult) -> case execResult of
                                                         Const value ->
                                                             let registers' = writeRegister (registers cpu') d value 
-                                                            in  trace ("VALUE : " ++ show value) (cpu' {registers = registers', rob = reorderBuff'}, True)
+                                                            in   (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((Sub  d s1 s2, pc), execResult) -> case execResult of
                                                         Const value ->
                                                             let registers' = writeRegister (registers cpu') d value 

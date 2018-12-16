@@ -5,7 +5,7 @@ StoreIdx R0 R14 1
 LoadIdx R3 R14 0
 LoadIdx R4 R14 1
 MoveI R8 1
-MoveI R1 10
+MoveI R1 35
 Lt R5 R8 R1
 BF R5 14
 Mult R4 R4 R8

@@ -29,6 +29,7 @@ dependencies:
 - template-haskell
 - megaparsec
 - containers
+- lens
 
 library:
   source-dirs: src

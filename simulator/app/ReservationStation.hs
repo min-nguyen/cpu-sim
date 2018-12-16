@@ -37,7 +37,7 @@ updateRS cpu
                                                 -- new_rs_entries = V.toList $ V.map ((\(cyc, ent) -> (cyc, Just ent)) . createRSEntry cpu statuses ) instrcts
                                                 
                                              in 
-                                                    ( foldl (\cpu (key, instrct) ->  let    rsEntries = trace ("Creating Entry : " ++ show instrct ++ "\n" )  (rs_entries (rs_station cpu))
+                                                    ( foldl (\cpu (key, instrct) ->  let    rsEntries = (rs_entries (rs_station cpu))
                                                                                             (cpu_', new_entry) = ((\(cpu_, (cyc, ent)) -> (cpu_, (cyc, Just ent))) . createRSEntry cpu statuses ) instrct
                                                                                             rsEntries' = Map.insert key new_entry rsEntries
                                                                                      in     cpu_' { rs_station = (rs_station  cpu_') { rs_entries = rsEntries' }}) cpu (zip free_rsids instrcts), decoder { buffer = V.drop fillSpace (buffer $ decodeUnit  cpu') })

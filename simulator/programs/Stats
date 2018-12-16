@@ -1,0 +1,137 @@
+Two Level Branch Predictor
+Factorial: 20
+Instructions Fetched      : 308
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 381
+Computation time          : 0.030 sec
+
+Fibonacci: 20
+Instructions Fetched      : 1004
+Instructions Committed    : 315
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 1024
+Computation time          : 0.058 sec
+
+Bubble Sort
+Instructions Fetched      : 467
+Instructions Committed    : 314
+Branches Executed         : 89
+Mispredicted Branches     : 18
+Total Cycles              : 596
+Computation time          : 0.048 sec
+
+Insertion Sort:
+Instructions Fetched      : 333
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 6
+Total Cycles              : 397
+Computation time          : 0.034 sec
+
+GCD:  34892 and 28495
+Instructions Fetched      : 3018
+Instructions Committed    : 1174
+Branches Executed         : 445
+Mispredicted Branches     : 175
+Total Cycles              : 3908
+Computation time          : 0.330 sec
+
+Local Branch Predictor + 2 Level Branch Predictor
+
+Bubble Sort:
+Instructions Fetched      : 464
+Instructions Committed    : 314
+Branches Executed         : 88
+Mispredicted Branches     : 13
+Total Cycles              : 587
+Computation time          : 0.044 sec
+
+Insertion Sort:
+Instructions Fetched      : 340
+Instructions Committed    : 218
+Branches Executed         : 54
+Mispredicted Branches     : 7
+Total Cycles              : 408
+Computation time 	  : 0.031 sec
+
+Factorial:
+Instructions Fetched      : 308
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 381
+Computation time 	  : 0.032 sec
+
+Fibonacci:
+Instructions Fetched      : 1004
+Instructions Committed    : 315
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 1024
+Computation time 	  : 0.057 sec
+
+GCD:
+Instructions Fetched      : 1930
+Instructions Committed    : 1174
+Branches Executed         : 364
+Mispredicted Branches     : 21
+Total Cycles              : 2355
+Computation time 	  : 0.193 sec
+
+Two Bit Saturing Counter:
+
+Bubble Sort:
+Instructions Fetched      : 456
+Instructions Committed    : 314
+Branches Executed         : 88
+Mispredicted Branches     : 17
+Total Cycles              : 591
+Computation time 	  : 0.051 sec
+
+Insertion Sort:
+Instructions Fetched      : 333
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 6
+Total Cycles              : 397
+
+Fibonacci:
+Instructions Fetched      : 1142
+Instructions Committed    : 347
+Branches Executed         : 25
+Mispredicted Branches     : 18
+Total Cycles              : 1164
+Computation time 	  : 0.065 sec
+
+Factorial:
+Instructions Fetched      : 308
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 381
+Computation time 	  : 0.027 sec
+
+GCD:
+Instructions Fetched      : 2935
+Instructions Committed    : 1174
+Branches Executed         : 445
+Mispredicted Branches     : 175
+Total Cycles              : 3908
+Computation time 	  : 0.329 sec
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -80,7 +80,7 @@ renameRegister reg_num source_reg_nums cpu =
                            rename_table'' = Map.insert r' reg_num rename_table'
                            free_regs'    = Map.insert r' False free_regs
                            
-                       in trace ("RENAMING " ++ show reg_num ++ " TO " ++ show r' ++ "\n") (cpu {renamer = (renamer cpu) {renameTable = rename_table'', freeRegisters = free_regs'}}, r', True)
+                       in (cpu {renamer = (renamer cpu) {renameTable = rename_table'', freeRegisters = free_regs'}}, r', True)
     where rename_table = renameTable (renamer cpu)   
           free_regs = freeRegisters (renamer cpu)
 

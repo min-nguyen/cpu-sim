@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Utils where
 
 import Lib
@@ -7,6 +8,7 @@ import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Control.Lens
 
 type Offset             = Int
 type Address            = Int
@@ -102,38 +104,6 @@ data InstructionResult  = InstructionResult {
                             output :: (Instruction, Int)
                         } 
 
-data CPU                = CPU {
-                            i_memory        :: IMemory,
-                            d_memory        :: Memory,
-                            rs_station      :: ReservationStation,
-                            rob             :: ReorderBuffer,
-                            registers       :: Registers,
-                            pc              :: Int,
-                            npc             :: Int,
-                            executionUnits  :: Units,
-                            fetchUnit       :: Unit,
-                            decodeUnit      :: Unit,
-                            branch_predictor :: BranchPredictor,
-                            renamer         :: RenamingTable,
-                            active          :: Bool,
-                            counter         :: Int
-                        } 
-
-instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter) = 
-     
-        "DataMemory: " ++ show dmem ++ "\n" ++
-        "ReservationStation: " ++ show rs_station ++ "\n" ++
-        "ReorderBuffer: " ++ show rob ++ "\n" ++
-        "Registers: " ++ show reg ++ "\n" ++
-        "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
-        "ExecutionUnits: " ++ show exec ++ 
-        "FetchUnit: " ++ show fetch ++ "\n" ++
-        "DecodeUnit: " ++ show decode ++ "\n" ++
-        "BranchPredictor: " ++ show branch_predictor ++ "\n" ++
-        "Renamer: " ++ show renamer ++ "\n"
-
-
 
 data UnitType           = IntUnit | MemUnit | BranchUnit
 
@@ -212,9 +182,40 @@ instance Ord BranchHistory where
                                             B10 -> 2
                                             B11 -> 3
 
+
+data Stats              = Stats {
+                            _instructions_fetched :: Int, 
+                            _instructions_committed :: Int, 
+                            _branches_made :: Int,
+                            _mispredicted_branches :: Int, 
+                            _total_cycles :: Int
+                            }
+
+makeLenses ''Stats
+
+instance Show Stats where 
+    show (Stats instrct_fetched instrct_committed branches_made mispredictions total_cycles)     =  "Instructions Fetched      : " ++ show instrct_fetched  ++ "\n" ++
+                                                                                                    "Instructions Committed    : " ++ show instrct_committed ++ "\n"  ++
+                                                                                                    "Branches Executed         : " ++ show branches_made  ++ "\n" ++ 
+                                                                                                    "Mispredicted Branches     : " ++ show mispredictions ++ "\n"  ++
+                                                                                                    "Total Cycles              : " ++ show total_cycles ++ "\n" 
+-- Local & Two level
+-- data BranchPredictor    = BranchPredictor { 
+--                             branch_table :: Map.Map Int (Map.Map BranchHistory Int),
+--                             branch_reg   :: Map.Map Int BranchHistory,
+--                             predictions  :: Map.Map Int Bool
+--                         } deriving Show
+
+-- Two level
+-- data BranchPredictor    = BranchPredictor { 
+--                             branch_table :: Map.Map BranchHistory Int,
+--                             branch_reg   :: BranchHistory,
+--                             predictions  :: Map.Map Int Bool
+--                         } deriving Show
+
+-- Two Bit Saturing Counter
 data BranchPredictor    = BranchPredictor { 
-                            branch_table :: Map.Map BranchHistory Int,
-                            branch_reg   :: BranchHistory,
+                            branch_reg   :: Int,
                             predictions  :: Map.Map Int Bool
                         } deriving Show
 
@@ -224,11 +225,51 @@ data RenamingTable      = RenamingTable {
                             freeRegisters :: Map.Map RegisterNum Bool
                         } deriving Show
 
+
+data CPU                = CPU {
+                            i_memory        :: IMemory,
+                            d_memory        :: Memory,
+                            rs_station      :: ReservationStation,
+                            rob             :: ReorderBuffer,
+                            registers       :: Registers,
+                            pc              :: Int,
+                            npc             :: Int,
+                            executionUnits  :: Units,
+                            fetchUnit       :: Unit,
+                            decodeUnit      :: Unit,
+                            branch_predictor :: BranchPredictor,
+                            renamer         :: RenamingTable,
+                            active          :: Bool,
+                            counter         :: Int,
+                            stats           :: Stats
+                        } 
+
+instance Show CPU where
+    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter stats) = 
+     
+        "DataMemory: " ++ show dmem ++ "\n" ++
+        "ReservationStation: " ++ show rs_station ++ "\n" ++
+        "ReorderBuffer: " ++ show rob ++ "\n" ++
+        "Registers: " ++ show reg ++ "\n" ++
+        "PC: " ++ show pc ++ ", NPC: " ++ show npc ++ "\n" ++
+        "ExecutionUnits: " ++ show exec ++ 
+        "FetchUnit: " ++ show fetch ++ "\n" ++
+        "DecodeUnit: " ++ show decode ++ "\n" ++
+        "BranchPredictor: " ++ show branch_predictor ++ "\n" ++
+        "Renamer: " ++ show renamer ++ "\n"
+
+
 initRenamingTable :: RenamingTable
 initRenamingTable = RenamingTable (Map.fromList (zip allRegNums allRegNums)) (Map.fromList (zip allRegNums (replicate 16 True)))
 
+-- initBranchPredictor :: BranchPredictor
+-- initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
+
+-- initBranchPredictor :: BranchPredictor
+-- initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
+
 initBranchPredictor :: BranchPredictor
-initBranchPredictor = BranchPredictor (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
+initBranchPredictor = BranchPredictor 1 (Map.fromList [])
 
 initReorderBuffer :: ReorderBuffer
 initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 20]]
@@ -259,7 +300,8 @@ initCPU instructions = let i_mem = V.fromList instructions
                            dunit = initUnit Decode_Unit
                            branch_pred = initBranchPredictor
                            renamer = initRenamingTable
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0
+                           stats = Stats 0 0 0 0 0
+                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0 stats
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -366,7 +408,8 @@ tick unit = unit {cycles = nextCycle} where
 flushPipeline :: CPU -> CPU  
 flushPipeline cpu = cpu { rs_station = initReservationStation, 
                           rob = initReorderBuffer,
-                          decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)}
+                          decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit),
+                          stats = (stats cpu) & mispredicted_branches %~ (+1)  }
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 

@@ -11,7 +11,7 @@ import ReservationStation
 import Data.Ord
 import Data.List 
 import Renamer
-
+import Control.Lens hiding (Const)
 
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
@@ -31,7 +31,7 @@ updateExecUnits cpu =
                         then    let instrct = fst instructionAndPc
 
                                     robEntry = euToROB $ execInstruction cpuArg instructionAndPc
-                                    rsId      = trace ("Executed " ++ show robEntry ++ " \n ") $ rs_id unitArg  
+                                    rsId      = rs_id unitArg  
                                     rsCycle   = rs_cycle unitArg
                                     cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
                                     
@@ -48,7 +48,8 @@ updateExecUnits cpu =
                                     cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 =  unit' {cycles = (cycles unit') - 1 }}}  
                                                                     Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit' {cycles = (cycles unit') - 1 }}}  
                                                                     Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit' {cycles = (cycles unit') - 1 }}}  
-                                                                    Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }}} 
+                                                                    Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }} ,
+                                                                                           stats = (stats cpu) & branches_made %~ (+1)  } 
                                       
                                 in cpu'''
                         else case unitId unitArg of Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  

@@ -14,7 +14,7 @@ import Renamer
 import Data.Ord
 import BranchPredictor 
 import Execution
-
+import Control.Lens hiding (Const)
 -- type ROBId              = Int 
 
 -- data ROBEntry           = ROBEntry {
@@ -35,7 +35,7 @@ popReorderBuffer :: CPU -> (CPU, Bool)
 popReorderBuffer cpu = 
     let reorderBuff = rob cpu
         (robId, maybeEntry) = head (rob_buffer reorderBuff)
-    in  trace ("ROB BUFFER " ++ show (rob_buffer reorderBuff)) $
+    in  
         case maybeEntry of Nothing -> (cpu, False)
                            Just entry -> commitReorderBuffer entry reorderBuff cpu
 
@@ -44,7 +44,8 @@ commitReorderBuffer entry reorderBuff cpu =
     let lastRobId    = fst (last ( rob_buffer reorderBuff)) + 1
 
         reorderBuff' = ReorderBuffer $ tail (rob_buffer reorderBuff) ++ [(lastRobId, Nothing)]
-        cpu' = cpu -- updateFreeRegisters (fst $ rob_instruction entry) 
+        cpu' = cpu { stats = (stats cpu) & instructions_committed %~ (+1) }
+        -- updateFreeRegisters (fst $ rob_instruction entry) 
         
         cpu'' = case execInstruction cpu' (rob_instruction entry) of 
             ((Add  d s1 s2, pc), execResult) -> case execResult of
@@ -142,4 +143,5 @@ commitReorderBuffer entry reorderBuff cpu =
                                                             Const value -> (cpu' {rob = reorderBuff',
                                                                                   active = False} , False)
 
-    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") cpu''
+    in --trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") $ 
+        cpu'' 

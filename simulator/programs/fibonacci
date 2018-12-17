@@ -7,10 +7,12 @@ StoreIdx R0 R14 1
 LoadIdx R0 R14 1
 MoveI R1 20
 Lt R0 R0 R1
-BF R0 26
+BF R0 28
 LoadIdx R1 R14 3
 LoadIdx R2 R14 2
 Add R1 R1 R2
+LoadIdx R0 R14 1
+StoreIdx R1 R0 4
 StoreIdx R1 R14 0
 LoadIdx R1 R14 2
 StoreIdx R1 R14 3

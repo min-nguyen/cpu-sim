@@ -27,35 +27,38 @@ updateExecUnits cpu =
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> cpuArg
             Just instructionAndPc -> 
-                        if (cycles unitArg) == 1
-                        then    let instrct = fst instructionAndPc
+                        if (rs_cycle unitArg) `elem`  (map fst (rob_buffer (rob cpu)))
+                        then if (cycles unitArg) == 1 
+                                then    let instrct = fst instructionAndPc
 
-                                    robEntry = euToROB $ execInstruction cpuArg instructionAndPc
-                                    rsId      = rs_id unitArg  
-                                    rsCycle   = rs_cycle unitArg
-                                    cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
-                                    
-                                    rsentries = rs_entries $ rs_station cpu'
-                                    regstats  = reg_statuses $ rs_station cpu'
+                                            robEntry = euToROB $ execInstruction cpuArg instructionAndPc
+                                            rsId      = rs_id unitArg  
+                                            rsCycle   = (rs_cycle unitArg)
+                                            cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
+                                            
+                                            rsentries = rs_entries $ rs_station cpu'
+                                            regstats  = reg_statuses $ rs_station cpu'
 
-                                    unit' = unitArg { instruction = Nothing, rs_id = 0 }
+                                            unit' = unitArg { instruction = Nothing, rs_id = 0 }
 
-                                    rsentries' = allocateRSEntry rsentries rsId
-                                    regstats' =   allocateRegStats regstats instrct --
-                                    rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
-                                    
-                                    cpu'' =  cpu' { rs_station = rsStation'}
-                                    cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 =  unit' {cycles = (cycles unit') - 1 }}}  
-                                                                    Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit' {cycles = (cycles unit') - 1 }}}  
-                                                                    Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit' {cycles = (cycles unit') - 1 }}}  
-                                                                    Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }} ,
-                                                                                           stats = (stats cpu) & branches_made %~ (+1)  } 
-                                      
-                                in cpu'''
-                        else case unitId unitArg of Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
-                                                    Int_Unit2 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit2 = unitArg {cycles = (cycles unitArg) - 1}}}  
-                                                    Mem_Unit  -> cpuArg { executionUnits = (executionUnits cpuArg) { memUnit = unitArg {cycles = (cycles unitArg) - 1}}}  
-                                                    Branch_Unit -> cpuArg { executionUnits = (executionUnits cpuArg) { branchUnit = unitArg {cycles = (cycles unitArg) - 1}}} 
+                                            rsentries' = allocateRSEntry rsentries rsId
+                                            regstats' =   allocateRegStats regstats instrct --
+                                            rsStation' = (rs_station cpu') { reg_statuses = regstats', rs_entries = rsentries' }
+                                            
+                                            cpu'' =  cpu' { rs_station = rsStation'}
+                                            cpu''' = case unitId unit' of   Int_Unit1 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit1 =  unit' {cycles = (cycles unit') - 1 }}}  
+                                                                            Int_Unit2 -> cpu'' { executionUnits = (executionUnits cpu'') { intUnit2 = unit' {cycles = (cycles unit') - 1 }}}  
+                                                                            Mem_Unit  -> cpu'' { executionUnits = (executionUnits cpu'') { memUnit = unit' {cycles = (cycles unit') - 1 }}}  
+                                                                            Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }} ,
+                                                                                                stats = (stats cpu) & branches_made %~ (+1)  } 
+                                            
+                                        in cpu'''
+                                else  
+                                    case unitId unitArg of  Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
+                                                            Int_Unit2 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit2 = unitArg {cycles = (cycles unitArg) - 1}}}  
+                                                            Mem_Unit  -> cpuArg { executionUnits = (executionUnits cpuArg) { memUnit = unitArg {cycles = (cycles unitArg) - 1}}}  
+                                                            Branch_Unit -> cpuArg { executionUnits = (executionUnits cpuArg) { branchUnit = unitArg {cycles = (cycles unitArg) - 1}}} 
+                        else cpuArg
         units =    map snd $ sortBy (comparing fst) $ map (\unit -> (rs_cycle unit, unit)) [intunit1, intunit2, memunit, branchunit]
         
         cpu' =  foldl (\cp unit  -> performExec cp unit) cpu units  

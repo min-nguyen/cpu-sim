@@ -156,6 +156,7 @@ Mispredicted Branches     : 7
 Total Cycles              : 393
 Computation time 	  : 0.031 sec
 
+GCD:
 Instructions Fetched      : 1675
 Instructions Committed    : 1174
 Branches Executed         : 364
@@ -163,9 +164,157 @@ Mispredicted Branches     : 21
 Total Cycles              : 2118
 Computation time 	  : 0.191 sec
 
+ROB Buffer - Size 2:
+
+Factorial:
+Instructions Fetched      : 341
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 414
+Computation time    	  : 0.025 sec
+
+Fibonacci:
+Instructions Fetched      : 764
+Instructions Committed    : 353
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 784
+Computation time 	  : 0.042 sec
+
+Insertion Sort:
+Instructions Fetched      : 340
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 7
+Total Cycles              : 407
+Computation time 	  : 0.023 sec
+
+ROB Buffer - Size 3:
+
+GCD:
+Instructions Fetched      : 1675
+Instructions Committed    : 1174
+Branches Executed         : 364
+Mispredicted Branches     : 21
+Total Cycles              : 2091
+Computation time 	  : 0.178 sec
+
+Factorial:
+Instructions Fetched      : 341
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 414
+Computation time 	  : 0.030 sec
+
+Fibonacci:
+Instructions Fetched      : 747
+Instructions Committed    : 353
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 767
+Computation time 	  : 0.041 sec
+
+Insertion Sort:
+Instructions Fetched      : 319
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 7
+Total Cycles              : 388
+Computation time 	  : 0.032 sec
+
+Bubble Sort:
+Instructions Fetched      : 597
+Instructions Committed    : 426
+Branches Executed         : 120
+Mispredicted Branches     : 15
+Total Cycles              : 758
+Computation time 	  : 0.050 sec
+
+ROB Buffer Size 4:
+
+Bubble Sort:
+Instructions Fetched      : 609
+Instructions Committed    : 426
+Branches Executed         : 120
+Mispredicted Branches     : 15
+Total Cycles              : 771
+Computation time 	  : 0.054 sec
+
+Insertion Sort:
+Instructions Fetched      : 333
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 7
+Total Cycles              : 402
+Computation time : 0.026 sec
+
+Factorial:
+Instructions Fetched      : 275
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 348
+Computation time 	  : 0.029 sec
+
+GCD:
+Instructions Fetched      : 1672
+Instructions Committed    : 1174
+Branches Executed         : 364
+Mispredicted Branches     : 21
+Total Cycles              : 2096
+Computation time          : 0.188 sec
+
+Instructions Fetched      : 758
+Instructions Committed    : 353
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 778
+Computation time 	  : 0.046 sec
 
 
+ROB Buffer - Size 5:
 
+Fibonacci:
+Instructions Fetched      : 758
+Instructions Committed    : 353
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 778
+Computation time          : 0.042 sec
+
+Factorial:
+Instructions Fetched      : 275
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 348
+Computation time 	  : 0.028 sec
+
+Bubble Sort:
+Instructions Fetched      : 631
+Instructions Committed    : 426
+Branches Executed         : 120
+Mispredicted Branches     : 15
+Total Cycles              : 793
+Computation time          : 0.072 sec
+
+Insertion Sort:
+Instructions Fetched      : 323
+Instructions Committed    : 218
+Branches Executed         : 53
+Mispredicted Branches     : 7
+Total Cycles              : 392
+Computation time 	  : 0.026 sec
+
+GCD:
+Instructions Fetched      : 1663
+Instructions Committed    : 1174
+Branches Executed         : 364
+Mispredicted Branches     : 21
+Total Cycles              : 2105
+Computation time 	  : 0.186 sec
 
 
 

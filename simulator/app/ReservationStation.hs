@@ -468,19 +468,19 @@ issueInstruction cpu rs_entry rsId rsCycle
                                                                                                                   Nothing   -> (cpu { executionUnits = units { intUnit2 = unit { instruction = Just instructionAndPC, 
                                                                                                                                                                                  rs_id = rsId, 
                                                                                                                                                                                  rs_cycle = rsCycle,
-                                                                                                                                                                                 cycles = 1  }}}, True )
+                                                                                                                                                                                 cycles = 2  }}}, True )
                                                                         Nothing ->  let units = executionUnits cpu
                                                                                         unit = intUnit1 units
                                                                                     in   case instruction unit of Just _    -> (cpu, False)
                                                                                                                   Nothing   -> (cpu { executionUnits = units { intUnit1 = unit { instruction = Just instructionAndPC, 
                                                                                                                                                                                  rs_id = rsId, 
                                                                                                                                                                                  rs_cycle = rsCycle,
-                                                                                                                                                                                 cycles = 1  }}}, True )
+                                                                                                                                                                                 cycles = 2  }}}, True )
                                                     MemUnit ->      let units = executionUnits cpu
                                                                         unit  = memUnit units
                                                                         cycs  = case instrct of LoadIdx s1 s2 i ->  let  base   = readRegister (registers cpu) s2
                                                                                                                          offset = i 
-                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 else 4
+                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 else 5
                                                                                                 StoreIdx s1 s2 i -> let  base   = readRegister (registers cpu) s2
                                                                                                                          offset = i 
                                                                                                                     in   if Map.member (base + i) (l1_cache cpu) then 2 else 4

@@ -36,11 +36,10 @@ executeProgram instructions = do
     let cpu = initCPU instructions 
     start <- getCPUTime
     let (cpu', count) = updateCPU cpu 0
-    print (stats cpu')
+    print ( stats cpu')
     end <- getCPUTime 
     let diff = (fromIntegral (end - start)) / (10^12)
     return diff        
-
 
 main :: IO ()
 main = do 

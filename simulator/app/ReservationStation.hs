@@ -359,10 +359,10 @@ updateRSEntry cpu  statuses cycle entry  =
                                                         
                                                     in  (RSEntry instructionAndPC d_status' s1_status' 0  v1 0 0 False)
                                     
-                                    B   i       -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
-                                    End     -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
-                                    Ret     -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
-                                    Label i     -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
+                                    B   i               -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
+                                    End                 -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
+                                    Ret                 -> (RSEntry instructionAndPC 0 0 0 0 0 0 False )
+                                    Label i             -> (RSEntry instructionAndPC 0 0 0 i 0 i False )
                                     BT  s1 i ->     let s1_status =  (fromMaybe 0 . flip getRegStat statuses) s1
                                                         v1 =  (\(source, stat) -> if stat == 0 then (readRegister regs source) else 0) (s1, s1_status)
                                                         invalidEntries = compareEntries [s1] (map foo higherPriorityEntries) :: [RegisterNum]
@@ -478,11 +478,19 @@ issueInstruction cpu rs_entry rsId rsCycle
                                                                                                                                                                                  cycles = 1  }}}, True )
                                                     MemUnit ->      let units = executionUnits cpu
                                                                         unit  = memUnit units
+                                                                        cycs  = case instrct of LoadIdx s1 s2 i ->  let  base   = readRegister (registers cpu) s2
+                                                                                                                         offset = i 
+                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 else 4
+                                                                                                StoreIdx s1 s2 i -> let  base   = readRegister (registers cpu) s2
+                                                                                                                         offset = i 
+                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 else 4
+                                                                                                _                -> 4
+
                                                                     in  case instruction unit of Just _ ->  (cpu, False)
                                                                                                  Nothing -> (cpu { executionUnits = units { memUnit = unit { instruction = Just instructionAndPC, 
                                                                                                                                                              rs_id = rsId, 
                                                                                                                                                              rs_cycle = rsCycle,
-                                                                                                                                                             cycles = 4 }}}, True )
+                                                                                                                                                             cycles = cycs }}}, True )
                                                     BranchUnit ->   let units = executionUnits cpu
                                                                         unit  = branchUnit units
                                                                     in  case instruction unit of Just _ ->  (cpu, False)

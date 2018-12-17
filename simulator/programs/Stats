@@ -122,7 +122,46 @@ Mispredicted Branches     : 175
 Total Cycles              : 3908
 Computation time 	  : 0.329 sec
 
+L1 Cache:
 
+Fibonacci:
+Instructions Fetched      : 635
+Instructions Committed    : 315
+Branches Executed         : 25
+Mispredicted Branches     : 5
+Total Cycles              : 655
+Computation time 	  : 0.042 sec
+
+Factorial:
+Instructions Fetched      : 309
+Instructions Committed    : 215
+Branches Executed         : 70
+Mispredicted Branches     : 1
+Total Cycles              : 382
+Computation time 	  : 0.029 sec
+
+Bubble Sort:
+Instructions Fetched      : 492
+Instructions Committed    : 314
+Branches Executed         : 88
+Mispredicted Branches     : 13
+Total Cycles              : 616
+Computation time 	  : 0.055 sec
+
+Insertion Sort:
+Instructions Fetched      : 320
+Instructions Committed    : 218
+Branches Executed         : 56
+Mispredicted Branches     : 7
+Total Cycles              : 393
+Computation time 	  : 0.031 sec
+
+Instructions Fetched      : 1675
+Instructions Committed    : 1174
+Branches Executed         : 364
+Mispredicted Branches     : 21
+Total Cycles              : 2118
+Computation time 	  : 0.191 sec
 
 
 

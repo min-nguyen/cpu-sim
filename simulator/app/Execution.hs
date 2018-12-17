@@ -93,8 +93,9 @@ execInstruction cpu (LoadIdx d s i, pc)
     = let regs   = registers cpu
           base   = readRegister (registers cpu) s
           offset = i 
-          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + offset)
-      in  ((LoadIdx d s i, pc), Const loadedWord)
+          addr   = (fromIntegral $ base + offset)
+          loadedWord = (d_memory cpu) V.! addr
+      in  ((LoadIdx d s i, pc), Tuple (addr, loadedWord))
 execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
           base   = readRegister (registers cpu) s1

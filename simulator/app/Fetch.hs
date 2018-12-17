@@ -41,13 +41,13 @@ fetch cpu current_pc =
                               
                               _      -> normalFetch nextInstruction                          
           where conditionalFetch i nextInstruction = 
-                         let  (branch_predictor', branched) = predictBranch (branch_predictor cpu) current_pc
+                         let  (branch_predictor', branched) = predictBranch (branch_predictor cpu) nextInstruction
                               current_pc' =  if branched
                                              then i
                                              else fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
                               buffer' = buff V.++ (V.fromList [nextInstruction])
                               fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
-                              branch_predictor'' = (branch_predictor') -- {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor') ) }
+                              branch_predictor'' = (branch_predictor') {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor') ) }
                               cpu' = cpu { fetchUnit = tick fUnit , 
                                    pc  = (fromIntegral $ current_pc'),
                                    npc = (fromIntegral $ current_pc'),

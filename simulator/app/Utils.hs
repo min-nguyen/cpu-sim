@@ -17,6 +17,8 @@ type Instruction        = Assembly RegisterNum RegisterNum Int
 
 type InstructionAndPc   = (Instruction, Int)
 
+type L1                 = Map.Map Int (Int, Int)
+type L2                 = V.Vector Int 
 type Memory             = V.Vector Int
 type IMemory            = V.Vector Instruction
 type Register           = Int
@@ -200,11 +202,11 @@ instance Show Stats where
                                                                                                     "Mispredicted Branches     : " ++ show mispredictions ++ "\n"  ++
                                                                                                     "Total Cycles              : " ++ show total_cycles ++ "\n" 
 -- Local & Two level
--- data BranchPredictor    = BranchPredictor { 
---                             branch_table :: Map.Map Int (Map.Map BranchHistory Int),
---                             branch_reg   :: Map.Map Int BranchHistory,
---                             predictions  :: Map.Map Int Bool
---                         } deriving Show
+data BranchPredictor    = BranchPredictor { 
+                            branch_table :: Map.Map Int (Map.Map BranchHistory Int),
+                            branch_reg   :: Map.Map Int BranchHistory,
+                            predictions  :: Map.Map Int Bool
+                        } deriving Show
 
 -- Two level
 -- data BranchPredictor    = BranchPredictor { 
@@ -214,10 +216,10 @@ instance Show Stats where
 --                         } deriving Show
 
 -- Two Bit Saturing Counter
-data BranchPredictor    = BranchPredictor { 
-                            branch_reg   :: Int,
-                            predictions  :: Map.Map Int Bool
-                        } deriving Show
+-- data BranchPredictor    = BranchPredictor { 
+--                             branch_reg   :: Int,
+--                             predictions  :: Map.Map Int Bool
+--                         } deriving Show
 
 
 data RenamingTable      = RenamingTable {
@@ -229,6 +231,7 @@ data RenamingTable      = RenamingTable {
 data CPU                = CPU {
                             i_memory        :: IMemory,
                             d_memory        :: Memory,
+                            l1_cache        :: L1,
                             rs_station      :: ReservationStation,
                             rob             :: ReorderBuffer,
                             registers       :: Registers,
@@ -245,9 +248,10 @@ data CPU                = CPU {
                         } 
 
 instance Show CPU where
-    show (CPU imem dmem rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter stats) = 
+    show (CPU imem dmem l1 rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter stats) = 
      
         "DataMemory: " ++ show dmem ++ "\n" ++
+        "L1: " ++ show l1 ++ "\n" ++
         "ReservationStation: " ++ show rs_station ++ "\n" ++
         "ReorderBuffer: " ++ show rob ++ "\n" ++
         "Registers: " ++ show reg ++ "\n" ++
@@ -269,7 +273,7 @@ initRenamingTable = RenamingTable (Map.fromList (zip allRegNums allRegNums)) (Ma
 -- initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
 
 initBranchPredictor :: BranchPredictor
-initBranchPredictor = BranchPredictor 1 (Map.fromList [])
+initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
 
 initReorderBuffer :: ReorderBuffer
 initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 20]]
@@ -290,6 +294,7 @@ initUnit unit_id = Unit unit_id 0 Nothing 0 0 V.empty
 initCPU :: [Instruction] -> CPU 
 initCPU instructions = let i_mem = V.fromList instructions 
                            d_mem = V.replicate 30 (fromIntegral 0)
+                           l1 = Map.fromList []
                            rs_station = initReservationStation
                            reorderBuff = initReorderBuffer
                            registers = initRegisters
@@ -301,7 +306,7 @@ initCPU instructions = let i_mem = V.fromList instructions
                            branch_pred = initBranchPredictor
                            renamer = initRenamingTable
                            stats = Stats 0 0 0 0 0
-                        in CPU  i_mem d_mem rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0 stats
+                        in CPU  i_mem d_mem l1 rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0 stats
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -546,3 +551,23 @@ insertReorderBuffer robId robEntry reorderBuff =
           replaceNth n newVal (x:xs)
            | n == 0 = newVal:xs
            | otherwise = x:replaceNth (n-1) newVal xs
+
+insertL1Cache :: Int -> Int -> CPU -> CPU
+insertL1Cache addr val cpu = if Map.size l1 >= 8
+                             then let oldestEntry    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (1000000, 0)) (Map.toList l1)
+                                      
+                                      l1'  = Map.delete (fst oldestEntry) l1 
+                                      l1'' = Map.insert addr ((fst $ snd earliestEntry) + 1, val) l1' 
+                                      cpu' = cpu {l1_cache = l1''}
+                                  in  cpu' {d_memory = writeMemoryI cpu' val addr} 
+                             else let l1' = Map.insert addr ((fst $ snd earliestEntry) + 1, val) l1
+                                  in cpu {l1_cache = l1'}
+                             where l1 = l1_cache cpu
+                                   earliestEntry  = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 > time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (-1, 0)) (Map.toList l1)
+
+
+writeCacheToMem :: CPU -> CPU 
+writeCacheToMem cpu = foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu (Map.toList l1)
+                    where l1 = l1_cache cpu

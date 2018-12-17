@@ -101,17 +101,23 @@ commitReorderBuffer entry reorderBuff cpu =
                                                             let registers' = writeRegister (registers cpu') d value 
                                                             in  (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((LoadIdx d s1 i, pc) ,execResult) -> case execResult of
-                                                            Const value ->
-                                                                let registers' = writeRegister (registers cpu') d value 
-                                                                in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+                                                            Tuple (addr,value) ->
+                                                                    case Map.lookup addr (l1_cache cpu') of 
+                                                                                Nothing -> let registers' = writeRegister (registers cpu') d value  
+                                                                                               cpu_' = insertL1Cache addr value cpu' 
+                                                                                           in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                Just (time, l1_val) -> let registers' =  writeRegister (registers cpu') d l1_val 
+                                                                                                       in (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((LoadBaseIdx d s1 s2, pc), execResult) ->  case execResult of
                                                                 Const value ->
-                                                                    let registers' = writeRegister (registers cpu') d value 
+                                                                    let 
+                                                                        registers' = writeRegister (registers cpu') d value 
                                                                     in  (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((StoreIdx r b i, pc), execResult) ->  case execResult of
                                                                 Tuple (value, addr) ->
-                                                                    let memory' = writeMemoryI cpu' value addr
-                                                                    in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
+                                                                    let cpu_' = if Map.member (addr) (l1_cache cpu) then cpu' { l1_cache = Map.adjust (\(time, val) -> (time, value)) addr (l1_cache cpu) } else cpu' {d_memory = writeMemoryI cpu' value addr} 
+                                                                        
+                                                                    in  (cpu_' {rob = reorderBuff'} , True)
             ((StoreBaseIdx r b o, pc), execResult) -> case execResult of
                                                                 Tuple (value, addr) ->
                                                                     let memory' = writeMemoryI cpu' (fromIntegral value) addr
@@ -121,7 +127,7 @@ commitReorderBuffer entry reorderBuff cpu =
             ((BT  s1    i, pc), execResult) ->  case execResult of
                                                         Tuple (value, link) -> 
                                                             let (cpu_', correctBranch) = case value of  0 -> (updateBranchPredictor False (BT  s1    i, pc) cpu')
-                                                                                                        1 -> (updateBranchPredictor True (BT  s1    i, pc) cpu')
+                                                                                                        1 -> (updateBranchPredictor True  (BT  s1    i, pc) cpu')
                                                                 npc' = if correctBranch then npc cpu_' else ( case value of 0 -> pc + 1
                                                                                                                             1 -> i)
                                                                 cpu'' = (cpu_' {npc = npc'})
@@ -140,8 +146,9 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                 then (cpu'' {rob = reorderBuff'}, False)
                                                                 else (flushPipeline cpu'', False) -- << ---
             ((End, pc) ,execResult)     -> case execResult of
-                                                            Const value -> (cpu' {rob = reorderBuff',
-                                                                                  active = False} , False)
+                                                            Const value ->  (writeCacheToMem (cpu' {rob = reorderBuff',
+                                                                                                    active = False}) , False)
+                                                                            
 
     in --trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") $ 
         cpu'' 

@@ -43,7 +43,7 @@ executeProgram instructions = do
 
 main :: IO ()
 main = do 
-    filename <- getArgs
+    [filename, branch_method, cache_config, rob_size, pipeline_size] <- getArgs
     print filename
     instructions <- parseFile (head filename)
     print instructions

@@ -22,12 +22,15 @@ predictBranch branchPredictor instrctAndPc =
                                                 in  branchPredictor { branch_table = branch_table', 
                                                                       branch_reg   = branch_reg'   }
                                     Just t  -> branchPredictor
-        branch_history =   fromJust $ Map.lookup instrct_pc (branch_reg branchPredictor')
-        branch_table'  =   fromJust $ Map.lookup instrct_pc (branch_table branchPredictor')
+        branchPredictor'' = case (Map.lookup instrct_pc (predictions branchPredictor')) of 
+                                    Nothing ->  let predictions' = Map.insert instrct_pc prediction (predictions branchPredictor')  
+                                                in  branchPredictor' { predictions = predictions'  }
+        branch_history =   fromJust $ Map.lookup instrct_pc (branch_reg branchPredictor'')
+        branch_table'  =   fromJust $ Map.lookup instrct_pc (branch_table branchPredictor'')
         branch_prob = case (Map.lookup branch_history branch_table') of 
                                     Nothing -> trace "\n somethings gone wrong \n" 1 
                                     Just p  -> p
-    in  (branchPredictor', if (branch_prob <= 2) then False else True)
+    in  (branchPredictor'', if (branch_prob <= 2) then False else True)
 
 updateBranchPredictor :: Bool -> InstructionAndPc -> CPU -> (CPU, Bool)
 updateBranchPredictor branched instrctAndPc cpu = 
@@ -51,12 +54,15 @@ updateBranchPredictor branched instrctAndPc cpu =
     in  (cpu {branch_predictor = branchPredictor'}, branched == correctBranch)
 
 
--- predictBranch :: BranchPredictor -> Bool
--- predictBranch branchPredictor =
+-- predictBranch :: BranchPredictor -> InstructionAndPc -> (BranchPredictor, Bool)
+-- predictBranch branchPredictor instrct =
 --     let branch_reg' = branch_reg branchPredictor 
 --         branch_table' = branch_table branchPredictor
 --         branch_prob = (fromMaybe 1 (Map.lookup branch_reg' branch_table' :: Maybe Int)) :: Int
---     in  if (branch_prob <= 2) then False else True
+--         branchPredictor' = case (Map.lookup instrct_pc (predictions branchPredictor)) of 
+--                                      Nothing ->  let predictions' = Map.insert instrct_pc prediction (predictions branchPredictor)  
+--                                      in  branchPredictor { predictions = predictions'  }
+--     in  if (branch_prob <= 2) then (branchPredictor', False) else (branchPredictor', True)
 
 -- updateBranchPredictor :: Bool -> InstructionAndPc -> CPU -> (CPU, Bool)
 -- updateBranchPredictor branched instrctAndPc cpu = 
@@ -79,9 +85,10 @@ updateBranchPredictor branched instrctAndPc cpu =
 
 
 -- Two Bit Saturing Counter
--- predictBranch :: BranchPredictor -> Int -> (BranchPredictor, Bool)
--- predictBranch branchPredictor instrct_pc =
---     let branch_prob = branch_reg branchPredictor
+-- predictBranch :: BranchPredictor -> InstructionAndPc -> (BranchPredictor, Bool)
+-- predictBranch branchPredictor instrctAndPc =
+--     let instruct_pc = snd instrctAndPc
+--         branch_prob = branch_reg branchPredictor
 --         prediction = if (branch_prob <= 2) then False else True
 --         branchPredictor' = case (Map.lookup instrct_pc (predictions branchPredictor)) of 
 --             Nothing ->  let predictions' = Map.insert instrct_pc prediction (predictions branchPredictor)  

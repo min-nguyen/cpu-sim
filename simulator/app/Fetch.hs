@@ -47,7 +47,7 @@ fetch cpu current_pc =
                                              else fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict
                               buffer' = buff V.++ (V.fromList [nextInstruction])
                               fUnit = (fetchUnit cpu) { buffer = buffer', cycles = 1 }
-                              branch_predictor'' = (branch_predictor') {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor') ) }
+                              branch_predictor'' = (branch_predictor') -- {predictions = Map.insert (snd nextInstruction) branched (predictions (branch_predictor') ) }
                               cpu' = cpu { fetchUnit = tick fUnit , 
                                    pc  = (fromIntegral $ current_pc'),
                                    npc = (fromIntegral $ current_pc'),

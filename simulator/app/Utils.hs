@@ -117,11 +117,12 @@ data Unit               = Unit {
                             instruction :: Maybe InstructionAndPc,
                             rs_id       :: RSId,
                             rs_cycle    :: Int, 
-                            buffer      :: V.Vector InstructionAndPc
+                            buffer      :: V.Vector InstructionAndPc,
+                            unit_size   :: Int
                         }  
 
 instance Show Unit where 
-    show (Unit unit_id cycle instrct  rsid rscycle buff) 
+    show (Unit unit_id cycle instrct  rsid rscycle buff unit_size) 
         = "[Cycles: " ++ show cycle ++ ", Instruction: " ++ show instrct ++ ", RSId: " ++ show rsid ++ 
             ", RSCycle: " ++ show rscycle ++ ", Buffer: " ++ show buff ++ "]"
 
@@ -202,25 +203,31 @@ instance Show Stats where
                                                                                                     "Mispredicted Branches     : " ++ show mispredictions ++ "\n"  ++
                                                                                                     "Total Cycles              : " ++ show total_cycles ++ "\n" 
 -- Local & Two level
-data BranchPredictor    = BranchPredictor { 
-                            branch_table :: Map.Map Int (Map.Map BranchHistory Int),
-                            branch_reg   :: Map.Map Int BranchHistory,
-                            predictions  :: Map.Map Int Bool
-                        } deriving Show
+data BranchPredictor    = BranchPredictor_Local { 
+                                branch_table :: Map.Map Int (Map.Map BranchHistory Int),
+                                branch_reg   :: Map.Map Int BranchHistory,
+                                predictions  :: Map.Map Int Bool
+                            } 
+                          | BranchPredictor_TwoLevel { 
+                                branch_table :: Map.Map BranchHistory Int,
+                                branch_reg   :: BranchHistory,
+                                predictions  :: Map.Map Int Bool
+                            }
+                          | BranchPredictor_TwoBit { 
+                                branch_reg   :: Int,
+                                predictions  :: Map.Map Int Bool
+                            } deriving Show
 
--- Two level
--- data BranchPredictor    = BranchPredictor { 
---                             branch_table :: Map.Map BranchHistory Int,
---                             branch_reg   :: BranchHistory,
---                             predictions  :: Map.Map Int Bool
---                         } deriving Show
+data BranchMethod = TwoBitSaturating | TwoLevel | Local | Always | Never
 
--- Two Bit Saturing Counter
--- data BranchPredictor    = BranchPredictor { 
---                             branch_reg   :: Int,
---                             predictions  :: Map.Map Int Bool
---                         } deriving Show
+data CacheConfig  = NoCache | L1Cache | L1L2Cache
 
+data Config             = Config { 
+                            branch_method :: BranchMethod, 
+                            cache_config :: CacheConfig,
+                            rob_size  :: Int,
+                            pipeline_size :: Int
+                        }
 
 data RenamingTable      = RenamingTable {
                             renameTable :: Map.Map RegisterNum RegisterNum,
@@ -245,11 +252,14 @@ data CPU                = CPU {
                             renamer         :: RenamingTable,
                             active          :: Bool,
                             counter         :: Int,
-                            stats           :: Stats
+                            stats           :: Stats,
+                            config          :: Config
                         } 
 
+
+
 instance Show CPU where
-    show (CPU imem dmem l1 l2 rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter stats) = 
+    show (CPU imem dmem l1 l2 rs_station rob reg pc npc exec fetch decode branch_predictor renamer active counter stats config) = 
      
         "DataMemory: " ++ show dmem ++ "\n" ++
         "L1: " ++ show l1 ++ "\n" ++
@@ -275,10 +285,13 @@ initRenamingTable = RenamingTable (Map.fromList (zip allRegNums allRegNums)) (Ma
 -- initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
 
 initBranchPredictor :: BranchPredictor
-initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
+initBranchPredictor branchconfig = 
+    case branchconfig of Local -> BranchPredictor_Local (Map.fromList []) (Map.fromList []) (Map.fromList [])
+                         TwoLevel ->  BranchPredictor_TwoLevel (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
+                         TwoBitSaturating -> BranchPredictor_TwoBit 1 (Map.fromList [])
 
-initReorderBuffer :: ReorderBuffer
-initReorderBuffer   = ReorderBuffer [ (i, Nothing) | i <- [1 .. 5]]
+initReorderBuffer :: Int -> ReorderBuffer
+initReorderBuffer robsize  = ReorderBuffer [ (i, Nothing) | i <- [1 .. rob_size]]
 
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0), (R8, 0), (R9, 0), (R10, 0), (R11, 0), (R12, 0), (R13, 0), (R14, 0), (R15, 0)]
@@ -290,26 +303,41 @@ initRegisters :: Registers
 initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
                           (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fromIntegral 0)
 
-initUnit :: UnitId -> Unit 
-initUnit unit_id = Unit unit_id 0 Nothing 0 0 V.empty 
+initUnit :: UnitId -> Int -> Unit 
+initUnit unit_id unit_size = Unit unit_id 0 Nothing 0 0 V.empty unit_size
 
-initCPU :: [Instruction] -> CPU 
-initCPU instructions = let i_mem = V.fromList instructions 
+parseConfig :: String -> String -> String -> String -> Config 
+parseConfig  branchmethod cacheconfig robsize pipelinesize 
+        = Config branch_method' cache_config' rob_size' pipeline_size'
+            where branch_method' = case branchmethod of "two_bit_saturating" -> TwoBitSaturating
+                                                        "two_level"          -> TwoLevel 
+                                                        "local"              -> Local 
+                  cache_config' = case cacheconfig of "no_cache" -> NoCache
+                                                      "l1"       -> L1Cache
+                                                      "l1l2"     -> L1L2Cache
+                  rob_size' = read robsize :: Int 
+                  pipeline_size' = read pipelinesize :: Int
+
+
+initCPU :: [Instruction] -> BranchMethod -> CacheConfig -> Int -> Int ->   CPU 
+initCPU instructions branchmethod cacheconfig robsize pipelinesize
+                     = let config = parseConfig branchmethod cacheconfig robsize pipelinesize
+                           i_mem = V.fromList instructions 
                            d_mem = V.replicate 200 (fromIntegral 0)
                            l1 = Map.fromList []
                            l2 = Map.fromList []
                            rs_station = initReservationStation
-                           reorderBuff = initReorderBuffer
+                           reorderBuff = initReorderBuffer (rob_size config)
                            registers = initRegisters
                            pc = fromIntegral 0
                            npc = fromIntegral 0
-                           eunits =  Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit)
-                           funit = initUnit Fetch_Unit
-                           dunit = initUnit Decode_Unit
-                           branch_pred = initBranchPredictor
+                           eunits =  Units (initUnit Int_Unit1 (pipeline_size config)) (initUnit Int_Unit2 (pipeline_size config)) (initUnit Mem_Unit (pipeline_size config)) (initUnit Branch_Unit (pipeline_size config))
+                           funit = initUnit Fetch_Unit (pipeline_size config)
+                           dunit = initUnit Decode_Unit (pipeline_size config)
+                           branch_pred = initBranchPredictor (branch_config config)
                            renamer = initRenamingTable
                            stats = Stats 0 0 0 0 0
-                        in CPU  i_mem d_mem l1 l2 rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0 stats
+                        in CPU  i_mem d_mem l1 l2 rs_station reorderBuff registers pc npc eunits funit dunit branch_pred renamer True 0 stats config
 
 writeMemory :: CPU -> Int -> RegisterNum -> Memory
 writeMemory cpu i s = d_memory cpu V.// [(fromIntegral i, (fromIntegral $ readRegister (registers cpu) s))]
@@ -414,10 +442,12 @@ tick unit = unit {cycles = nextCycle} where
     nextCycle  = if cycles unit <= 1 then 0 else cycles unit - 1
 
 flushPipeline :: CPU -> CPU  
-flushPipeline cpu = cpu { rs_station = initReservationStation, 
-                          rob = initReorderBuffer,
-                          decodeUnit = initUnit Decode_Unit, fetchUnit = initUnit Fetch_Unit, executionUnits = Units (initUnit Int_Unit1) (initUnit Int_Unit2) (initUnit Mem_Unit) (initUnit Branch_Unit),
-                          stats = (stats cpu) & mispredicted_branches %~ (+1)  }
+flushPipeline cpu = let conf = config cpu
+                    in  cpu {   rs_station = initReservationStation, 
+                                rob = initReorderBuffer  (rob_size conf),
+                                decodeUnit = initUnit Decode_Unit (pipeline_size conf), fetchUnit = initUnit Fetch_Unit  (pipeline_size conf), 
+                                executionUnits = Units (initUnit Int_Unit1  (pipeline_size conf)) (initUnit Int_Unit2  (pipeline_size conf)) (initUnit Mem_Unit  (pipeline_size conf)) (initUnit Branch_Unit  (pipeline_size conf)),
+                                stats = (stats cpu) & mispredicted_branches %~ (+1)  }
                        
 instructionToExecutionUnit :: Instruction -> UnitType
 instructionToExecutionUnit instruction = 

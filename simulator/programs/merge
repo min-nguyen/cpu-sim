@@ -1,0 +1,242 @@
+AddI R12 R12 30
+Move R0 R12
+SubI R0 R0 9
+StoreIdx R0 R14 20
+Move R0 R12
+SubI R0 R0 19
+StoreIdx R0 R14 10
+LoadIdx R0 R14 20
+MoveI R1 5
+StoreIdx R1 R0 0
+MoveI R1 2
+StoreIdx R1 R0 1
+MoveI R1 12
+StoreIdx R1 R0 2
+MoveI R1 4
+StoreIdx R1 R0 3
+MoveI R1 13
+StoreIdx R1 R0 4
+MoveI R1 8
+StoreIdx R1 R0 5
+MoveI R1 9
+StoreIdx R1 R0 6
+MoveI R1 6
+StoreIdx R1 R0 7
+MoveI R1 11
+StoreIdx R1 R0 8
+LoadIdx R0 R14 10
+MoveI R1 0
+StoreIdx R1 R0 0
+MoveI R1 0
+StoreIdx R1 R0 1
+MoveI R1 0
+StoreIdx R1 R0 2
+MoveI R1 0
+StoreIdx R1 R0 3
+MoveI R1 0
+StoreIdx R1 R0 4
+MoveI R1 0
+StoreIdx R1 R0 5
+MoveI R1 0
+StoreIdx R1 R0 6
+MoveI R1 0
+StoreIdx R1 R0 7
+MoveI R1 0
+StoreIdx R1 R0 8
+MoveI R0 0
+StoreIdx R0 R14 9
+MoveI R0 0
+StoreIdx R0 R14 8
+MoveI R0 0
+StoreIdx R0 R14 7
+MoveI R0 0
+StoreIdx R0 R14 6
+MoveI R0 0
+StoreIdx R0 R14 5
+MoveI R0 0
+StoreIdx R0 R14 4
+MoveI R0 0
+StoreIdx R0 R14 3
+MoveI R0 1
+StoreIdx R0 R14 2
+LoadIdx R0 R14 2
+MoveI R1 9
+Lt R0 R0 R1
+BF R0 240
+MoveI R1 0
+StoreIdx R1 R14 1
+LoadIdx R1 R14 1
+LoadIdx R3 R14 2
+Add R1 R1 R3
+MoveI R2 9
+Lt R1 R1 R2
+BF R1 232
+LoadIdx R2 R14 1
+LoadIdx R3 R14 2
+Add R2 R2 R3
+StoreIdx R2 R14 9
+LoadIdx R2 R14 9
+LoadIdx R3 R14 2
+Add R2 R2 R3
+StoreIdx R2 R14 7
+MoveI R2 9
+LoadIdx R3 R14 7
+Lt R2 R2 R3
+BF R2 87
+MoveI R3 9
+StoreIdx R3 R14 7
+LoadIdx R2 R14 1
+StoreIdx R2 R14 4
+LoadIdx R2 R14 1
+StoreIdx R2 R14 6
+LoadIdx R2 R14 9
+StoreIdx R2 R14 5
+LoadIdx R2 R14 6
+LoadIdx R4 R14 9
+Lt R2 R2 R4
+LoadIdx R3 R14 5
+LoadIdx R4 R14 7
+Lt R3 R3 R4
+And R2 R2 R3
+BF R2 148
+LoadIdx R3 R14 20
+LoadIdx R5 R14 5
+Add R3 R3 R5
+LoadIdx R3 R3 0
+LoadIdx R4 R14 20
+LoadIdx R5 R14 6
+Add R4 R4 R5
+LoadIdx R4 R4 0
+Lt R3 R3 R4
+BF R3 124
+LoadIdx R4 R14 10
+LoadIdx R5 R14 4
+LoadIdx R6 R14 20
+LoadIdx R7 R14 5
+Add R6 R6 R7
+LoadIdx R6 R6 0
+Add R7 R4 R5
+StoreIdx R6 R7 0
+LoadIdx R4 R14 5
+MoveI R5 1
+Add R4 R4 R5
+StoreIdx R4 R14 5
+B 136
+LoadIdx R4 R14 10
+LoadIdx R5 R14 4
+LoadIdx R6 R14 20
+LoadIdx R7 R14 6
+Add R6 R6 R7
+LoadIdx R6 R6 0
+Add R7 R4 R5
+StoreIdx R6 R7 0
+LoadIdx R4 R14 6
+MoveI R5 1
+Add R4 R4 R5
+StoreIdx R4 R14 6
+LoadIdx R3 R14 4
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 4
+LoadIdx R2 R14 6
+LoadIdx R4 R14 9
+Lt R2 R2 R4
+LoadIdx R3 R14 5
+LoadIdx R4 R14 7
+Lt R3 R3 R4
+And R2 R2 R3
+BT R2 101
+LoadIdx R2 R14 6
+LoadIdx R3 R14 9
+Lt R2 R2 R3
+BF R2 172
+LoadIdx R3 R14 10
+LoadIdx R4 R14 4
+LoadIdx R5 R14 20
+LoadIdx R6 R14 6
+Add R5 R5 R6
+LoadIdx R5 R5 0
+Add R3 R3 R4
+StoreIdx R5 R3 0
+LoadIdx R3 R14 6
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 6
+LoadIdx R3 R14 4
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 4
+LoadIdx R2 R14 6
+LoadIdx R3 R14 9
+Lt R2 R2 R3
+BT R2 152
+LoadIdx R2 R14 5
+LoadIdx R3 R14 7
+Lt R2 R2 R3
+BF R2 196
+LoadIdx R3 R14 10
+LoadIdx R4 R14 4
+LoadIdx R5 R14 20
+LoadIdx R6 R14 5
+Add R5 R5 R6
+LoadIdx R5 R5 0
+Add R6 R3 R4
+StoreIdx R5 R6 0
+LoadIdx R3 R14 5
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 5
+LoadIdx R3 R14 4
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 4
+LoadIdx R2 R14 5
+LoadIdx R3 R14 7
+Lt R2 R2 R3
+BT R2 176
+LoadIdx R2 R14 1
+StoreIdx R2 R14 0
+LoadIdx R2 R14 0
+LoadIdx R3 R14 7
+Lt R2 R2 R3
+BF R2 220
+LoadIdx R3 R14 20
+LoadIdx R4 R14 0
+LoadIdx R5 R14 10
+LoadIdx R6 R14 0
+Add R5 R5 R6
+LoadIdx R5 R5 0
+Add R6 R3 R4
+StoreIdx R5 R6 0
+LoadIdx R3 R14 0
+StoreIdx R3 R14 4
+LoadIdx R3 R14 0
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 0
+LoadIdx R2 R14 0
+LoadIdx R3 R14 7
+Lt R2 R2 R3
+BT R2 202
+LoadIdx R2 R14 1
+MoveI R3 2
+LoadIdx R4 R14 2
+Mult R3 R3 R4
+Add R2 R2 R3
+StoreIdx R2 R14 1
+LoadIdx R1 R14 1
+LoadIdx R3 R14 2
+Add R1 R1 R3
+MoveI R2 9
+Lt R1 R1 R2
+BT R1 73
+LoadIdx R1 R14 2
+MoveI R2 1
+Add R1 R1 R2
+StoreIdx R1 R14 2
+LoadIdx R0 R14 2
+MoveI R1 9
+Lt R0 R0 R1
+BT R0 65
+SubI R12 R12 30
+End

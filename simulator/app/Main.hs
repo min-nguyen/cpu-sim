@@ -48,17 +48,17 @@ main = do
     instructions <- parseFile (head filename)
     print instructions
     time1 <- executeProgram instructions
-    time2 <- executeProgram instructions
-    time3 <- executeProgram instructions
-    time4 <- executeProgram instructions
-    time5 <- executeProgram instructions
-    time6 <- executeProgram instructions
-    time7 <- executeProgram instructions
-    time8 <- executeProgram instructions
-    time9 <- executeProgram instructions
-    time10 <- executeProgram instructions
+    -- time2 <- executeProgram instructions
+    -- time3 <- executeProgram instructions
+    -- time4 <- executeProgram instructions
+    -- time5 <- executeProgram instructions
+    -- time6 <- executeProgram instructions
+    -- time7 <- executeProgram instructions
+    -- time8 <- executeProgram instructions
+    -- time9 <- executeProgram instructions
+    -- time10 <- executeProgram instructions
 
-    let t = (sum [time1, time2, time3, time4, time5, time6, time7, time8, time9, time10])/10
-    printf "Computation time : %0.3f sec\n" (t :: Double)
+    -- let t = (sum [time1, time2, time3, time4, time5, time6, time7, time8, time9, time10])/10
+    printf "Computation time : %0.3f sec\n" (time1 :: Double)
     -- print $ stats cpu'
     -- printf "Computation time : %0.3f sec\n" (diff :: Double)

@@ -1,0 +1,373 @@
+MoveI R0 107
+MoveI R1 10
+StoreIdx R1 R0 0
+MoveI R1 0
+StoreIdx R1 R0 1
+MoveI R1 1
+StoreIdx R1 R0 2
+MoveI R1 0
+StoreIdx R1 R0 3
+MoveI R1 0
+StoreIdx R1 R0 4
+MoveI R1 4
+StoreIdx R1 R0 5
+MoveI R1 0
+StoreIdx R1 R0 6
+MoveI R1 0
+StoreIdx R1 R0 7
+MoveI R1 0
+StoreIdx R1 R0 8
+MoveI R1 0
+StoreIdx R1 R0 9
+MoveI R1 1
+StoreIdx R1 R0 10
+MoveI R1 0
+StoreIdx R1 R0 11
+MoveI R1 3
+StoreIdx R1 R0 12
+MoveI R1 0
+StoreIdx R1 R0 13
+MoveI R1 0
+StoreIdx R1 R0 14
+MoveI R1 1
+StoreIdx R1 R0 15
+MoveI R1 5
+StoreIdx R1 R0 16
+MoveI R1 1
+StoreIdx R1 R0 17
+MoveI R1 0
+StoreIdx R1 R0 18
+MoveI R1 5
+StoreIdx R1 R0 19
+MoveI R1 0
+StoreIdx R1 R0 20
+MoveI R1 2
+StoreIdx R1 R0 21
+MoveI R1 0
+StoreIdx R1 R0 22
+MoveI R1 8
+StoreIdx R1 R0 23
+MoveI R1 0
+StoreIdx R1 R0 24
+MoveI R1 5
+StoreIdx R1 R0 25
+MoveI R1 7
+StoreIdx R1 R0 26
+MoveI R1 3
+StoreIdx R1 R0 27
+MoveI R1 0
+StoreIdx R1 R0 28
+MoveI R1 3
+StoreIdx R1 R0 29
+MoveI R1 0
+StoreIdx R1 R0 30
+MoveI R1 0
+StoreIdx R1 R0 31
+MoveI R1 5
+StoreIdx R1 R0 32
+MoveI R1 2
+StoreIdx R1 R0 33
+MoveI R1 0
+StoreIdx R1 R0 34
+MoveI R1 4
+StoreIdx R1 R0 35
+MoveI R1 0
+StoreIdx R1 R0 36
+MoveI R1 12
+StoreIdx R1 R0 37
+MoveI R1 0
+StoreIdx R1 R0 38
+MoveI R1 0
+StoreIdx R1 R0 39
+MoveI R1 0
+StoreIdx R1 R0 40
+MoveI R1 0
+StoreIdx R1 R0 41
+MoveI R1 0
+StoreIdx R1 R0 42
+MoveI R1 8
+StoreIdx R1 R0 43
+MoveI R1 0
+StoreIdx R1 R0 44
+MoveI R1 7
+StoreIdx R1 R0 45
+MoveI R1 0
+StoreIdx R1 R0 46
+MoveI R1 7
+StoreIdx R1 R0 47
+MoveI R1 11
+StoreIdx R1 R0 48
+MoveI R0 57
+MoveI R1 1
+StoreIdx R1 R0 0
+MoveI R1 0
+StoreIdx R1 R0 1
+MoveI R1 0
+StoreIdx R1 R0 2
+MoveI R1 0
+StoreIdx R1 R0 3
+MoveI R1 0
+StoreIdx R1 R0 4
+MoveI R1 0
+StoreIdx R1 R0 5
+MoveI R1 0
+StoreIdx R1 R0 6
+MoveI R1 0
+StoreIdx R1 R0 7
+MoveI R1 1
+StoreIdx R1 R0 8
+MoveI R1 0
+StoreIdx R1 R0 9
+MoveI R1 0
+StoreIdx R1 R0 10
+MoveI R1 0
+StoreIdx R1 R0 11
+MoveI R1 0
+StoreIdx R1 R0 12
+MoveI R1 0
+StoreIdx R1 R0 13
+MoveI R1 0
+StoreIdx R1 R0 14
+MoveI R1 0
+StoreIdx R1 R0 15
+MoveI R1 1
+StoreIdx R1 R0 16
+MoveI R1 0
+StoreIdx R1 R0 17
+MoveI R1 0
+StoreIdx R1 R0 18
+MoveI R1 0
+StoreIdx R1 R0 19
+MoveI R1 0
+StoreIdx R1 R0 20
+MoveI R1 0
+StoreIdx R1 R0 21
+MoveI R1 0
+StoreIdx R1 R0 22
+MoveI R1 0
+StoreIdx R1 R0 23
+MoveI R1 1
+StoreIdx R1 R0 24
+MoveI R1 0
+StoreIdx R1 R0 25
+MoveI R1 0
+StoreIdx R1 R0 26
+MoveI R1 0
+StoreIdx R1 R0 27
+MoveI R1 0
+StoreIdx R1 R0 28
+MoveI R1 0
+StoreIdx R1 R0 29
+MoveI R1 0
+StoreIdx R1 R0 30
+MoveI R1 0
+StoreIdx R1 R0 31
+MoveI R1 1
+StoreIdx R1 R0 32
+MoveI R1 0
+StoreIdx R1 R0 33
+MoveI R1 0
+StoreIdx R1 R0 34
+MoveI R1 0
+StoreIdx R1 R0 35
+MoveI R1 0
+StoreIdx R1 R0 36
+MoveI R1 0
+StoreIdx R1 R0 37
+MoveI R1 0
+StoreIdx R1 R0 38
+MoveI R1 0
+StoreIdx R1 R0 39
+MoveI R1 1
+StoreIdx R1 R0 40
+MoveI R1 0
+StoreIdx R1 R0 41
+MoveI R1 0
+StoreIdx R1 R0 42
+MoveI R1 0
+StoreIdx R1 R0 43
+MoveI R1 0
+StoreIdx R1 R0 44
+MoveI R1 0
+StoreIdx R1 R0 45
+MoveI R1 0
+StoreIdx R1 R0 46
+MoveI R1 0
+StoreIdx R1 R0 47
+MoveI R1 1
+StoreIdx R1 R0 48
+MoveI R0 7
+MoveI R1 0
+StoreIdx R1 R0 0
+MoveI R1 0
+StoreIdx R1 R0 1
+MoveI R1 0
+StoreIdx R1 R0 2
+MoveI R1 0
+StoreIdx R1 R0 3
+MoveI R1 0
+StoreIdx R1 R0 4
+MoveI R1 0
+StoreIdx R1 R0 5
+MoveI R1 0
+StoreIdx R1 R0 6
+MoveI R1 0
+StoreIdx R1 R0 7
+MoveI R1 0
+StoreIdx R1 R0 8
+MoveI R1 0
+StoreIdx R1 R0 9
+MoveI R1 0
+StoreIdx R1 R0 10
+MoveI R1 0
+StoreIdx R1 R0 11
+MoveI R1 0
+StoreIdx R1 R0 12
+MoveI R1 0
+StoreIdx R1 R0 13
+MoveI R1 0
+StoreIdx R1 R0 14
+MoveI R1 0
+StoreIdx R1 R0 15
+MoveI R1 0
+StoreIdx R1 R0 16
+MoveI R1 0
+StoreIdx R1 R0 17
+MoveI R1 0
+StoreIdx R1 R0 18
+MoveI R1 0
+StoreIdx R1 R0 19
+MoveI R1 0
+StoreIdx R1 R0 20
+MoveI R1 0
+StoreIdx R1 R0 21
+MoveI R1 0
+StoreIdx R1 R0 22
+MoveI R1 0
+StoreIdx R1 R0 23
+MoveI R1 0
+StoreIdx R1 R0 24
+MoveI R1 0
+StoreIdx R1 R0 25
+MoveI R1 0
+StoreIdx R1 R0 26
+MoveI R1 0
+StoreIdx R1 R0 27
+MoveI R1 0
+StoreIdx R1 R0 28
+MoveI R1 0
+StoreIdx R1 R0 29
+MoveI R1 0
+StoreIdx R1 R0 30
+MoveI R1 0
+StoreIdx R1 R0 31
+MoveI R1 0
+StoreIdx R1 R0 32
+MoveI R1 0
+StoreIdx R1 R0 33
+MoveI R1 0
+StoreIdx R1 R0 34
+MoveI R1 0
+StoreIdx R1 R0 35
+MoveI R1 0
+StoreIdx R1 R0 36
+MoveI R1 0
+StoreIdx R1 R0 37
+MoveI R1 0
+StoreIdx R1 R0 38
+MoveI R1 0
+StoreIdx R1 R0 39
+MoveI R1 0
+StoreIdx R1 R0 40
+MoveI R1 0
+StoreIdx R1 R0 41
+MoveI R1 0
+StoreIdx R1 R0 42
+MoveI R1 0
+StoreIdx R1 R0 43
+MoveI R1 0
+StoreIdx R1 R0 44
+MoveI R1 0
+StoreIdx R1 R0 45
+MoveI R1 0
+StoreIdx R1 R0 46
+MoveI R1 0
+StoreIdx R1 R0 47
+MoveI R1 0
+StoreIdx R1 R0 48
+MoveI R0 7
+StoreIdx R0 R14 6
+MoveI R0 7
+StoreIdx R0 R14 5
+MoveI R0 7
+StoreIdx R0 R14 4
+MoveI R0 0
+StoreIdx R0 R14 3
+LoadIdx R0 R14 3
+LoadIdx R1 R14 6
+Lt R0 R0 R1
+BF R0 372
+MoveI R1 0
+StoreIdx R1 R14 2
+LoadIdx R1 R14 2
+LoadIdx R2 R14 5
+Lt R1 R1 R2
+BF R1 364
+MoveI R2 0
+StoreIdx R2 R14 1
+LoadIdx R2 R14 1
+LoadIdx R3 R14 4
+Lt R2 R2 R3
+BF R2 356
+MoveI R3 107
+LoadIdx R5 R14 3
+LoadIdx R7 R14 6
+Mult R5 R5 R7
+LoadIdx R6 R14 1
+Add R5 R5 R6
+Add R5 R3 R5
+LoadIdx R3 R5 0
+MoveI R4 57
+LoadIdx R5 R14 1
+LoadIdx R7 R14 4
+Mult R5 R5 R7
+LoadIdx R6 R14 2
+Add R5 R5 R6
+Add R5 R4 R5
+LoadIdx R4 R5 0
+Add R3 R3 R4
+StoreIdx R3 R14 0
+MoveI R3 7
+LoadIdx R4 R14 3
+LoadIdx R7 R14 6
+Mult R4 R4 R7
+LoadIdx R6 R14 2
+Add R4 R4 R6
+Add R3 R3 R4
+LoadIdx R5 R14 0
+StoreIdx R5 R3 0
+LoadIdx R3 R14 1
+MoveI R4 1
+Add R3 R3 R4
+StoreIdx R3 R14 1
+LoadIdx R2 R14 1
+LoadIdx R3 R14 4
+Lt R2 R2 R3
+BT R2 321
+LoadIdx R2 R14 2
+MoveI R3 1
+Add R2 R2 R3
+StoreIdx R2 R14 2
+LoadIdx R1 R14 2
+LoadIdx R2 R14 5
+Lt R1 R1 R2
+BT R1 315
+LoadIdx R1 R14 3
+MoveI R2 1
+Add R1 R1 R2
+StoreIdx R1 R14 3
+LoadIdx R0 R14 3
+LoadIdx R1 R14 6
+Lt R0 R0 R1
+BT R0 309
+End

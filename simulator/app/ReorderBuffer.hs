@@ -103,25 +103,45 @@ commitReorderBuffer entry reorderBuff cpu =
             ((LoadIdx d s1 i, pc) ,execResult) -> case execResult of
                                                             Tuple (addr,value) ->
                                                                     case Map.lookup addr (l1_cache cpu') of 
-                                                                                Nothing -> let registers' = writeRegister (registers cpu') d value  
-                                                                                               cpu_' = insertL1Cache addr value cpu' 
-                                                                                           in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
-                                                                                Just (time, l1_val) -> let registers' =  writeRegister (registers cpu') d l1_val 
-                                                                                                       in (cpu' {registers = registers', rob = reorderBuff'}, True)
+                                                                                Nothing ->  case Map.lookup addr (l2_cache cpu') of 
+                                                                                                    Nothing ->  let registers' = writeRegister (registers cpu') d value  
+                                                                                                                    cpu_' = insertL1Cache addr value cpu' 
+                                                                                                                in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                                    Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
+                                                                                                                                cpu_' = insertL1Cache addr l2_val cpu' 
+                                                                                                                            in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                Just (time, l1_val) ->  let registers' =  writeRegister (registers cpu') d l1_val 
+                                                                                                        in (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((LoadBaseIdx d s1 s2, pc), execResult) ->  case execResult of
-                                                                Const value ->
-                                                                    let 
-                                                                        registers' = writeRegister (registers cpu') d value 
-                                                                    in  (cpu' {registers = registers', rob = reorderBuff'}, True)
+                                                            Tuple (addr,value) ->
+                                                                    case Map.lookup addr (l1_cache cpu') of 
+                                                                                Nothing ->  case Map.lookup addr (l2_cache cpu') of 
+                                                                                                    Nothing ->  let registers' = writeRegister (registers cpu') d value  
+                                                                                                                    cpu_' = insertL1Cache addr value cpu' 
+                                                                                                                in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                                    Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
+                                                                                                                                cpu_' = insertL1Cache addr l2_val cpu' 
+                                                                                                                            in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                Just (time, l1_val) ->  let registers' =  writeRegister (registers cpu') d l1_val 
+                                                                                                        in (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((StoreIdx r b i, pc), execResult) ->  case execResult of
-                                                                Tuple (value, addr) ->
-                                                                    let cpu_' = if Map.member (addr) (l1_cache cpu) then cpu' { l1_cache = Map.adjust (\(time, val) -> (time, value)) addr (l1_cache cpu) } else cpu' {d_memory = writeMemoryI cpu' value addr} 
+                                                                Tuple (addr, value ) ->
+                                                                    let cpu_' = if Map.member (addr) (l1_cache cpu') 
+                                                                                then cpu' { l1_cache = Map.adjust (\(time, val) -> (time, value)) addr (l1_cache cpu') } 
+                                                                                else if Map.member (addr) (l2_cache cpu') 
+                                                                                     then cpu' { l2_cache = Map.adjust (\(time, val) -> (time, value)) addr (l2_cache cpu') }  
+                                                                                     else cpu' {d_memory = writeMemoryI cpu' value addr} 
                                                                         
                                                                     in  (cpu_' {rob = reorderBuff'} , True)
             ((StoreBaseIdx r b o, pc), execResult) -> case execResult of
-                                                                Tuple (value, addr) ->
-                                                                    let memory' = writeMemoryI cpu' (fromIntegral value) addr
-                                                                    in  (cpu' {d_memory = memory', rob = reorderBuff'} , True)
+                                                                Tuple (addr, value ) ->
+                                                                    let cpu_' = if Map.member (addr) (l1_cache cpu') 
+                                                                                then cpu' { l1_cache = Map.adjust (\(time, val) -> (time, value)) addr (l1_cache cpu') } 
+                                                                                else if Map.member (addr) (l2_cache cpu') 
+                                                                                     then cpu' { l2_cache = Map.adjust (\(time, val) -> (time, value)) addr (l2_cache cpu') }  
+                                                                                     else cpu' {d_memory = writeMemoryI cpu' value addr} 
+                                                                        
+                                                                    in  (cpu_' {rob = reorderBuff'} , True)
             ((B i, pc), execResult)         -> case execResult of
                                                         Tuple (value, link) -> (cpu' {rob = reorderBuff'}, False)     
             ((BT  s1    i, pc), execResult) ->  case execResult of

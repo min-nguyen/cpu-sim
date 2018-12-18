@@ -103,21 +103,22 @@ execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
           base   = readRegister (registers cpu) s1
           r_offset = readRegister (registers cpu) s2 
-          loadedWord = (d_memory cpu) V.! (fromIntegral $ base + r_offset)
-      in  ((LoadBaseIdx d s1 s2, pc), Const loadedWord)    
+          addr   = (fromIntegral $ base + r_offset)
+          loadedWord = (d_memory cpu) V.! addr
+      in  ((LoadBaseIdx d s1 s2, pc), Tuple (addr, loadedWord))    
 -- STORE
 execInstruction cpu (StoreIdx r b i, pc)
     = let regs   = registers cpu
           val    = readRegister (registers cpu) r
           base   = readRegister (registers cpu) b
           offset = i 
-      in  ((StoreIdx r b i, pc), Tuple (val, base + offset))
+      in  ((StoreIdx r b i, pc), Tuple (base + offset, val))
 execInstruction cpu (StoreBaseIdx r s1 s2, pc)
     = let regs   = registers cpu
           val    = readRegister (registers cpu) r
           base   = readRegister (registers cpu) s1
           r_offset = readRegister (registers cpu) s2
-      in  ((StoreBaseIdx r s1 s2, pc), Tuple (val, fromIntegral $ base + r_offset))
+      in  ((StoreBaseIdx r s1 s2, pc), Tuple (fromIntegral $ base + r_offset, val))
 -- ARITHMETIC
 execInstruction cpu (Add dest source_a source_b, pc)     
     = let regs = registers cpu

@@ -106,6 +106,7 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                                 Nothing ->  case Map.lookup addr (l2_cache cpu') of 
                                                                                                     Nothing ->  let registers' = writeRegister (registers cpu') d value  
                                                                                                                     cpu_' = insertL1Cache addr value cpu' 
+                                                                                                                    -- cpu_'' = insertL2Cache addr value cpu_'
                                                                                                                 in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
                                                                                                     Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
                                                                                                                                 cpu_' = insertL1Cache addr l2_val cpu' 
@@ -118,6 +119,7 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                                 Nothing ->  case Map.lookup addr (l2_cache cpu') of 
                                                                                                     Nothing ->  let registers' = writeRegister (registers cpu') d value  
                                                                                                                     cpu_' = insertL1Cache addr value cpu' 
+                                                                                                                    -- cpu_'' = insertL2Cache addr value cpu_'
                                                                                                                 in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
                                                                                                     Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
                                                                                                                                 cpu_' = insertL1Cache addr l2_val cpu' 

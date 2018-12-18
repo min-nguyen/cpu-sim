@@ -557,19 +557,47 @@ insertReorderBuffer robId robEntry reorderBuff =
 
 insertL1Cache :: Int -> Int -> CPU -> CPU
 insertL1Cache addr val cpu = if Map.size l1 >= 8
-                             then 
-                                  let l1'  = Map.delete (oldestAddress) l1 
-                                      l1'' = Map.insert addr (oldestTime + 1, val) l1' 
-                                      cpu' = cpu {l1_cache = l1''}
-                                  in  cpu' {d_memory = writeMemoryI cpu' (snd $ snd oldestEntry) (fst oldestEntry)} 
-                             else let l1' = Map.insert addr (oldestTime + 1, val) l1
+                             then let l1'  = Map.delete (oldestAddressL1) l1 
+                                      l1'' = Map.insert addr (earliestTimeL1 + 1, val) l1'
+                                      cpu'  = insertL2Cache oldestAddressL1 (snd $ snd oldestEntryL1) cpu
+                                      cpu'' = cpu' {l1_cache = l1''}
+                                  in  cpu'' 
+                             else let l1' = Map.insert addr (earliestTimeL1 + 1, val) l1
                                   in cpu {l1_cache = l1'}
                              where l1 = l1_cache cpu
-                                   oldestEntry    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                   oldestEntryL1    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
                                                                 if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l1)
+                                   earliestEntryL1 =  foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 > time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (-1, 0)) (Map.toList l1)
+                                   oldestTimeL1 = if (fst $ snd oldestEntryL1) == 100000 then 0 else (fst $ snd oldestEntryL1) 
+                                   earliestTimeL1 = if (fst $ snd earliestEntryL1) == (-1) then 0 else (fst $ snd earliestEntryL1) 
+                                   oldestAddressL1 = fst oldestEntryL1
+                                   l2 = l2_cache cpu 
+                                   oldestEntryL2    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
+                                   oldestTimeL2 = if (fst $ snd oldestEntryL2) == 100000 then 0 else (fst $ snd oldestEntryL2) 
+                                   oldestAddressL2 = fst oldestEntryL2
+
+insertL2Cache :: Int -> Int -> CPU -> CPU
+insertL2Cache addr val cpu = if Map.size l2 >= 16
+                             then let l2'  = Map.delete (oldestAddress) l2
+                                      l2'' = Map.insert addr (earliestTime + 1, val) l2' 
+                                      cpu' = cpu {l2_cache = l2''}
+                                  in  cpu' {d_memory = writeMemoryI cpu' (snd $ snd oldestEntry) (fst oldestEntry)} 
+                             else let l2' = Map.insert addr (earliestTime + 1, val) l2
+                                  in cpu {l2_cache = l2'}
+                             where l2 = l2_cache cpu
+                                   oldestEntry    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
+                                   earliestEntry =  foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
+                                                                if time1 > time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (-1, 0)) (Map.toList l2)
                                    oldestTime = if (fst $ snd oldestEntry) == 100000 then 0 else (fst $ snd oldestEntry) 
+                                   earliestTime = if (fst $ snd earliestEntry) == (-1) then 0 else (fst $ snd earliestEntry) 
                                    oldestAddress = fst oldestEntry
 
 writeCacheToMem :: CPU -> CPU 
-writeCacheToMem cpu = foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu (Map.toList l1)
+writeCacheToMem cpu = g (f $ Map.toList l1) (Map.toList l2)
                     where l1 = l1_cache cpu
+                          l2 = l2_cache cpu
+                          f = (foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu)
+                          g = (foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ))

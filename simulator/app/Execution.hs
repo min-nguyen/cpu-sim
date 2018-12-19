@@ -27,14 +27,16 @@ updateExecUnits cpu =
         performExec cpuArg unitArg = case instruction unitArg of
             Nothing -> cpuArg
             Just instructionAndPc -> 
-                        if (rs_cycle unitArg) `elem`  (map fst (rob_buffer (rob cpu)))
-                        then if (cycles unitArg) == 1 
-                                then    let instrct = fst instructionAndPc
+                        
+                            if (cycles unitArg) == 1 
+                                then  if (rs_cycle unitArg) `elem`  (map fst (rob_buffer (rob cpuArg)))
+                                      then
+                                        let instrct = fst instructionAndPc
 
                                             robEntry = euToROB $ execInstruction cpuArg instructionAndPc
                                             rsId      = rs_id unitArg  
                                             rsCycle   = (rs_cycle unitArg)
-                                            cpu'      = cpu {rob = (insertReorderBuffer rsCycle robEntry (rob cpu))}
+                                            cpu'      = cpuArg {rob = (insertReorderBuffer rsCycle robEntry (rob cpuArg))}
                                             
                                             rsentries = rs_entries $ rs_station cpu'
                                             regstats  = reg_statuses $ rs_station cpu'
@@ -53,12 +55,13 @@ updateExecUnits cpu =
                                                                                                 stats = (stats cpu) & branches_made %~ (+1)  } 
                                             
                                         in cpu'''
-                                else  
-                                    case unitId unitArg of  Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
-                                                            Int_Unit2 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit2 = unitArg {cycles = (cycles unitArg) - 1}}}  
-                                                            Mem_Unit  -> cpuArg { executionUnits = (executionUnits cpuArg) { memUnit = unitArg {cycles = (cycles unitArg) - 1}}}  
-                                                            Branch_Unit -> cpuArg { executionUnits = (executionUnits cpuArg) { branchUnit = unitArg {cycles = (cycles unitArg) - 1}}} 
-                        else cpuArg
+                                      else cpuArg
+                            else  
+                                case unitId unitArg of  Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
+                                                        Int_Unit2 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit2 = unitArg {cycles = (cycles unitArg) - 1}}}  
+                                                        Mem_Unit  -> cpuArg { executionUnits = (executionUnits cpuArg) { memUnit = unitArg {cycles = (cycles unitArg) - 1}}}  
+                                                        Branch_Unit -> cpuArg { executionUnits = (executionUnits cpuArg) { branchUnit = unitArg {cycles = (cycles unitArg) - 1}}} 
+                       
         units =    map snd $ sortBy (comparing fst) $ map (\unit -> (rs_cycle unit, unit)) [intunit1, intunit2, memunit, branchunit]
         
         cpu' =  foldl (\cp unit  -> performExec cp unit) cpu units  

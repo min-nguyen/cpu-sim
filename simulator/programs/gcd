@@ -1,6 +1,6 @@
-MoveI R0 34892
+MoveI R0 34890
 StoreIdx R0 R14 1
-MoveI R0 28495
+MoveI R0 28490
 StoreIdx R0 R14 0
 LoadIdx R0 R14 0
 LoadIdx R1 R14 1

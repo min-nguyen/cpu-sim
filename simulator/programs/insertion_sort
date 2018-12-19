@@ -12,7 +12,7 @@ MoveI R1 2
 StoreIdx R1 R0 6
 MoveI R5 0
 MoveI R6 0
-MoveI R7 2
+MoveI R7 1
 MoveI R8 7
 Lt R0 R7 R8
 BF R0 35

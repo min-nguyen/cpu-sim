@@ -21,7 +21,7 @@ import Control.Lens
 
 updateFetch :: CPU -> CPU
 updateFetch cpu = let cpu' = fetch cpu current_pc
-                  in cpu' { stats = (stats cpu') & total_cycles %~ (+1)  }
+                  in trace (show cpu' ++ "\n") $ cpu' { stats = (stats cpu') & total_cycles %~ (+1)  }
                   where current_pc = if npc cpu == pc cpu 
                                      then fromIntegral (pc cpu) 
                                      else fromIntegral $ npc cpu
@@ -29,7 +29,7 @@ updateFetch cpu = let cpu' = fetch cpu current_pc
 
 fetch :: CPU -> Int -> CPU 
 fetch cpu current_pc = 
-          if current_pc >= V.length (i_memory cpu) || V.length buff >= 4
+          if current_pc >= V.length (i_memory cpu) || V.length buff >= (pipeline_size $ config cpu)
           then cpu {stats =  (stats cpu) & instructions_fetched  %~ (+1) }
           else 
           let nextInstruction = (((i_memory cpu) V.! current_pc ), (current_pc) )
@@ -41,7 +41,7 @@ fetch cpu current_pc =
                               
                               _      -> normalFetch nextInstruction                          
           where conditionalFetch i nextInstruction = 
-                         let  (branch_predictor', branched) = predictBranch (branch_predictor cpu) nextInstruction
+                         let  (branch_predictor', branched) = predictBranch cpu nextInstruction
                               current_pc' =  if branched
                                              then i
                                              else fromIntegral (current_pc + 1) -- keep fetching until buffer full, mem empty, or branch occurs and then predict

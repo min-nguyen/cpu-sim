@@ -110,7 +110,8 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                                                                 in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
                                                                                                     Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
                                                                                                                                 cpu_' = insertL1Cache addr l2_val cpu' 
-                                                                                                                            in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                                                                l2' = Map.delete addr (l2_cache cpu_')
+                                                                                                                            in  (cpu_' {l2_cache = l2', registers = registers', rob = reorderBuff'}, True) 
                                                                                 Just (time, l1_val) ->  let registers' =  writeRegister (registers cpu') d l1_val 
                                                                                                         in (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((LoadBaseIdx d s1 s2, pc), execResult) ->  case execResult of
@@ -123,7 +124,8 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                                                                 in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
                                                                                                     Just (time, l2_val) ->  let registers' = writeRegister (registers cpu') d l2_val  
                                                                                                                                 cpu_' = insertL1Cache addr l2_val cpu' 
-                                                                                                                            in  (cpu_' {registers = registers', rob = reorderBuff'}, True) 
+                                                                                                                                l2' = Map.delete addr (l2_cache cpu_')
+                                                                                                                            in  (cpu_' {l2_cache = l2', registers = registers', rob = reorderBuff'}, True) 
                                                                                 Just (time, l1_val) ->  let registers' =  writeRegister (registers cpu') d l1_val 
                                                                                                         in (cpu' {registers = registers', rob = reorderBuff'}, True)
             ((StoreIdx r b i, pc), execResult) ->  case execResult of

@@ -204,30 +204,30 @@ instance Show Stats where
                                                                                                     "Total Cycles              : " ++ show total_cycles ++ "\n" 
 -- Local & Two level
 data BranchPredictor    = BranchPredictor_Local { 
-                                branch_table :: Map.Map Int (Map.Map BranchHistory Int),
-                                branch_reg   :: Map.Map Int BranchHistory,
-                                predictions  :: Map.Map Int Bool
+                                branch_table_local :: Map.Map Int (Map.Map BranchHistory Int),
+                                branch_reg_local   :: Map.Map Int BranchHistory,
+                                predictions        :: Map.Map Int Bool
                             } 
                           | BranchPredictor_TwoLevel { 
-                                branch_table :: Map.Map BranchHistory Int,
-                                branch_reg   :: BranchHistory,
-                                predictions  :: Map.Map Int Bool
+                                branch_table_two_level :: Map.Map BranchHistory Int,
+                                branch_reg_two_level   :: BranchHistory,
+                                predictions            :: Map.Map Int Bool
                             }
                           | BranchPredictor_TwoBit { 
-                                branch_reg   :: Int,
+                                branch_reg_two_bit   :: Int,
                                 predictions  :: Map.Map Int Bool
                             } deriving Show
 
-data BranchMethod = TwoBitSaturating | TwoLevel | Local | Always | Never
+data BranchConfig = TwoBit | TwoLevel | Local | Always | Never deriving Show
 
-data CacheConfig  = NoCache | L1Cache | L1L2Cache
+data CacheConfig  = NoCache | L1Cache | L1L2Cache deriving Show
 
 data Config             = Config { 
-                            branch_method :: BranchMethod, 
+                            branch_config :: BranchConfig, 
                             cache_config :: CacheConfig,
                             rob_size  :: Int,
                             pipeline_size :: Int
-                        }
+                        } deriving Show
 
 data RenamingTable      = RenamingTable {
                             renameTable :: Map.Map RegisterNum RegisterNum,
@@ -272,7 +272,8 @@ instance Show CPU where
         "FetchUnit: " ++ show fetch ++ "\n" ++
         "DecodeUnit: " ++ show decode ++ "\n" ++
         "BranchPredictor: " ++ show branch_predictor ++ "\n" ++
-        "Renamer: " ++ show renamer ++ "\n"
+        "Renamer: " ++ show renamer ++ "\n" ++
+        "Config: " ++ show config ++ "\n"
 
 
 initRenamingTable :: RenamingTable
@@ -284,14 +285,14 @@ initRenamingTable = RenamingTable (Map.fromList (zip allRegNums allRegNums)) (Ma
 -- initBranchPredictor :: BranchPredictor
 -- initBranchPredictor = BranchPredictor (Map.fromList []) (Map.fromList []) (Map.fromList [])
 
-initBranchPredictor :: BranchPredictor
+initBranchPredictor :: BranchConfig -> BranchPredictor
 initBranchPredictor branchconfig = 
     case branchconfig of Local -> BranchPredictor_Local (Map.fromList []) (Map.fromList []) (Map.fromList [])
                          TwoLevel ->  BranchPredictor_TwoLevel (Map.fromList [(B00, 1), (B01, 1), (B10, 1), (B11, 1)]) B00 (Map.fromList [])
-                         TwoBitSaturating -> BranchPredictor_TwoBit 1 (Map.fromList [])
+                         TwoBit -> BranchPredictor_TwoBit 1 (Map.fromList [])
 
 initReorderBuffer :: Int -> ReorderBuffer
-initReorderBuffer robsize  = ReorderBuffer [ (i, Nothing) | i <- [1 .. rob_size]]
+initReorderBuffer robsize  = ReorderBuffer [ (i, Nothing) | i <- [1 .. robsize]]
 
 initRegisterStatuses :: RegisterStatuses
 initRegisterStatuses = Map.fromList [(R0, 0), (R1, 0), (R2, 0), (R3, 0), (R4, 0), (R5, 0), (R6, 0), (R7, 0), (R8, 0), (R9, 0), (R10, 0), (R11, 0), (R12, 0), (R13, 0), (R14, 0), (R15, 0)]
@@ -309,7 +310,7 @@ initUnit unit_id unit_size = Unit unit_id 0 Nothing 0 0 V.empty unit_size
 parseConfig :: String -> String -> String -> String -> Config 
 parseConfig  branchmethod cacheconfig robsize pipelinesize 
         = Config branch_method' cache_config' rob_size' pipeline_size'
-            where branch_method' = case branchmethod of "two_bit_saturating" -> TwoBitSaturating
+            where branch_method' = case branchmethod of "two_bit"           -> TwoBit
                                                         "two_level"          -> TwoLevel 
                                                         "local"              -> Local 
                   cache_config' = case cacheconfig of "no_cache" -> NoCache
@@ -319,7 +320,7 @@ parseConfig  branchmethod cacheconfig robsize pipelinesize
                   pipeline_size' = read pipelinesize :: Int
 
 
-initCPU :: [Instruction] -> BranchMethod -> CacheConfig -> Int -> Int ->   CPU 
+initCPU :: [Instruction] -> String -> String -> String -> String ->   CPU 
 initCPU instructions branchmethod cacheconfig robsize pipelinesize
                      = let config = parseConfig branchmethod cacheconfig robsize pipelinesize
                            i_mem = V.fromList instructions 

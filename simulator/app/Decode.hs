@@ -18,10 +18,10 @@ updateDecode cpu =
         fetchbuff = V.drop fetchN (buffer fetcher)
         (fetcher', decoder') = (fetcher {buffer = fetchbuff} , decoder { buffer = decodebuff })
     in  cpu { fetchUnit = fetcher', decodeUnit = tick decoder' } 
-    where   fetchN = if freeBufferSpace > 0 && freeBufferSpace < 5
+    where   fetchN = if freeBufferSpace > 0 && freeBufferSpace < (pipeline_size $ config cpu) + 1
                      then freeBufferSpace
                      else 0
-            freeBufferSpace = 4 - V.length (buffer (decodeUnit cpu))
+            freeBufferSpace = (pipeline_size $ config cpu) - V.length (buffer (decodeUnit cpu))
 
 -- updateDecode :: CPU -> CPU 
 -- updateDecode cpu

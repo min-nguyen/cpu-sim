@@ -8,7 +8,7 @@ import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
 import Data.Maybe
-import Control.Lens
+import Control.Lens hiding (Const)
 
 type Offset             = Int
 type Address            = Int
@@ -539,6 +539,9 @@ deallocateRegStats regstats instrct rsid d_status s1_status s2_status =
 allocateRSEntry :: RSs -> RSId -> RSs 
 allocateRSEntry rs rsid = Map.adjust (\(cycle, _) -> (cycle, Nothing)) rsid rs
 
+allocateRSEntryWithCycle :: RSs -> Int -> RSs 
+allocateRSEntryWithCycle rs cycle = Map.map (\(cyc, x) -> if cyc == cycle then (cyc, Nothing) else (cyc, x)) rs
+
 changeRSEntry :: RSs -> RSId -> RSEntry -> RSs 
 changeRSEntry rs rsid entry = Map.adjust (\(cycle, _) -> (cycle, Just entry)) rsid rs
 
@@ -573,6 +576,34 @@ sameRegs instrct =
         Ret -> False 
         End -> False
 
+getDestReg :: Instruction -> Maybe RegisterNum
+getDestReg instrct = 
+    case instrct of 
+        Add  d s1 s2        -> Just d
+        AddI d s  i         -> Just d
+        Sub  d s1 s2        -> Just d
+        SubI d s  i         -> Just d
+        Mult  d s1 s2       -> Just d
+        Div  d s1 s2        -> Just d
+        And d s1 s2         -> Just d
+        Or  d s1 s2         -> Just d
+        Lt  d s1 s2         -> Just d
+        Eq  d s1 s2         -> Just d
+        Not  d s            -> Just d
+        
+        Move   s1 s2        -> Just s1
+        MoveI  s1 i         -> Just s1
+        LoadIdx d s i       -> Just d
+        LoadBaseIdx d s1 s2 -> Just d
+        StoreIdx d s i      -> Nothing
+        StoreBaseIdx d s1 s2 -> Nothing
+
+        B i -> Nothing 
+        BT r i ->  Nothing
+        BF r i ->  Nothing
+        Ret -> Nothing 
+        End -> Nothing
+
 insertReorderBuffer :: ROBId -> ROBEntry -> ReorderBuffer -> ReorderBuffer
 insertReorderBuffer robId robEntry reorderBuff = 
     let ReorderBuffer entries = reorderBuff
@@ -585,6 +616,18 @@ insertReorderBuffer robId robEntry reorderBuff =
           replaceNth n newVal (x:xs)
            | n == 0 = newVal:xs
            | otherwise = x:replaceNth (n-1) newVal xs
+
+
+findFromReorderBuffer :: RegisterNum -> Registers -> ReorderBuffer -> Int
+findFromReorderBuffer regnum registers reorderBuff =
+    foldl (\latest_val (robid, rob_entry) -> case rob_entry of Nothing -> latest_val
+                                                               Just entry -> 
+                                                                            case getDestReg (fst $ rob_instruction entry) of 
+                                                                                Nothing -> latest_val
+                                                                                Just d  -> if d == regnum then case rob_value entry of 
+                                                                                                                    Const x -> x 
+                                                                                                                    Tuple (a, b) -> b 
+                                                                                                            else latest_val) (readRegister registers regnum ) (rob_buffer reorderBuff)
 
 insertL1Cache :: Int -> Int -> CPU -> CPU
 insertL1Cache addr val cpu = if Map.size l1 >= 8
@@ -608,6 +651,8 @@ insertL1Cache addr val cpu = if Map.size l1 >= 8
                                                                 if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
                                    oldestTimeL2 = if (fst $ snd oldestEntryL2) == 100000 then 0 else (fst $ snd oldestEntryL2) 
                                    oldestAddressL2 = fst oldestEntryL2
+
+
 
 insertL2Cache :: Int -> Int -> CPU -> CPU
 insertL2Cache addr val cpu = if Map.size l2 >= 16

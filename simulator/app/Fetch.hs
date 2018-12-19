@@ -21,11 +21,11 @@ import Control.Lens
 
 updateFetch :: CPU -> CPU
 updateFetch cpu = let cpu' = fetch cpu current_pc
-                  in trace (show cpu' ++ "\n") $ cpu' { stats = (stats cpu') & total_cycles %~ (+1)  }
+                  in  cpu' { stats = (stats cpu') & total_cycles %~ (+1)  }
                   where current_pc = if npc cpu == pc cpu 
                                      then fromIntegral (pc cpu) 
                                      else fromIntegral $ npc cpu
-                         
+
 
 fetch :: CPU -> Int -> CPU 
 fetch cpu current_pc = 

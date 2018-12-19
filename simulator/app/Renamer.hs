@@ -77,10 +77,10 @@ renameRegister reg_num source_reg_nums cpu =
         case getFreeRegister cpu reg_num source_reg_nums of 
             Nothing -> (cpu, reg_num, False)
             Just r' -> let rename_table' = Map.insert reg_num r' rename_table
-                           rename_table'' = Map.insert r' reg_num rename_table'
+                        --    rename_table'' = Map.insert r' reg_num rename_table'
                            free_regs'    = Map.insert r' False free_regs
                            
-                       in (cpu {renamer = (renamer cpu) {renameTable = rename_table'', freeRegisters = free_regs'}}, r', True)
+                       in (cpu {renamer = (renamer cpu) {renameTable = rename_table', freeRegisters = free_regs'}}, r', True)
     where rename_table = renameTable (renamer cpu)   
           free_regs = freeRegisters (renamer cpu)
 

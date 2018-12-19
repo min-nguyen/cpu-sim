@@ -47,7 +47,7 @@ commitReorderBuffer entry reorderBuff cpu =
         cpu' = cpu { stats = (stats cpu) & instructions_committed %~ (+1) }
         -- updateFreeRegisters (fst $ rob_instruction entry) 
         
-        cpu'' = case execInstruction cpu' (rob_instruction entry) of 
+        cpu'' = case (rob_instruction entry, rob_value entry) of --execInstruction cpu' 
             ((Add  d s1 s2, pc), execResult) -> case execResult of
                                                         Const value ->
                                                             let registers' = writeRegister (registers cpu') d value 

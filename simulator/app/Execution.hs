@@ -12,7 +12,7 @@ import Data.Ord
 import Data.List 
 import Renamer
 import Control.Lens hiding (Const)
-
+import qualified Data.Map.Strict as Map
 updateExec :: CPU -> CPU
 updateExec cpu = let decoder        = (decodeUnit cpu)
        
@@ -54,7 +54,7 @@ updateExecUnits cpu =
                                                                             Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }} ,
                                                                                                 stats = (stats cpu) & branches_made %~ (+1)  } 
                                             
-                                        in cpu'''
+                                        in trace (show cpu''' ++ "\n") $ cpu'''
                                       else cpuArg
                             else  
                                 case unitId unitArg of  Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  
@@ -72,14 +72,16 @@ execInstruction :: CPU -> InstructionAndPc -> (InstructionAndPc, ExecutionResult
 -- BRANCH
 execInstruction cpu (BT source_a i, pc)     
     = let regs   = registers cpu
-          a =  readRegister (registers cpu) source_a
+        --   a =  readRegister (registers cpu) source_a
+          a = findFromReorderBuffer source_a regs (rob cpu)
           link_reg_val = readRegister regs R14
       in case () of 
                 _ | a == 1        -> ((BT source_a i, pc), Tuple (1, link_reg_val))
                 _                 -> ((BT source_a i, pc), Tuple (0, link_reg_val))
 execInstruction cpu (BF source_a i, pc)     
     = let regs   = registers cpu
-          a =  readRegister (registers cpu) source_a
+        --   a =  readRegister (registers cpu) source_a
+          a = findFromReorderBuffer source_a regs (rob cpu)
           link_reg_val = readRegister regs R14
       in case () of 
                 _ | a == 0        -> ((BF source_a  i, pc), Tuple (1, link_reg_val))
@@ -92,87 +94,105 @@ execInstruction cpu (MoveI d i, pc)
     = ((MoveI d i, pc), Const i)
 execInstruction cpu (Move d s, pc)
     = let regs   = registers cpu
-          a      = readRegister (registers cpu) s
+        --   a      = readRegister (registers cpu) s
+          a = findFromReorderBuffer s regs (rob cpu)
       in  ((Move d s, pc), Const a)
 -- LOAD
 execInstruction cpu (LoadIdx d s i, pc)
     = let regs   = registers cpu
-          base   = readRegister (registers cpu) s
+        --   base   = readRegister (registers cpu) s
+          base = findFromReorderBuffer s regs (rob cpu)
           offset = i 
           addr   = (fromIntegral $ base + offset)
           loadedWord = (d_memory cpu) V.! addr
-      in  ((LoadIdx d s i, pc), Tuple (addr, loadedWord))
+          loadedWord' = case Map.lookup addr (l1_cache cpu) of 
+                                Nothing ->  case Map.lookup addr (l2_cache cpu) of 
+                                                    Nothing ->  loadedWord
+                                                    Just (time, l2_val) ->  l2_val
+                                Just (time, l1_val) ->  l1_val
+      in  ((LoadIdx d s i, pc), Tuple (addr, loadedWord'))
 execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
-          base   = readRegister (registers cpu) s1
-          r_offset = readRegister (registers cpu) s2 
+        --   base   = readRegister (registers cpu) s1
+          base = findFromReorderBuffer s1 regs (rob cpu)
+        --   r_offset = readRegister (registers cpu) s2 
+          r_offset = findFromReorderBuffer s2 regs (rob cpu)
           addr   = (fromIntegral $ base + r_offset)
           loadedWord = (d_memory cpu) V.! addr
-      in  ((LoadBaseIdx d s1 s2, pc), Tuple (addr, loadedWord))    
+          loadedWord' = case Map.lookup addr (l1_cache cpu) of 
+                                Nothing ->  case Map.lookup addr (l2_cache cpu) of 
+                                                    Nothing ->  loadedWord
+                                                    Just (time, l2_val) ->  l2_val
+                                Just (time, l1_val) ->  l1_val
+      in  ((LoadBaseIdx d s1 s2, pc), Tuple (addr, loadedWord'))    
 -- STORE
 execInstruction cpu (StoreIdx r b i, pc)
     = let regs   = registers cpu
-          val    = readRegister (registers cpu) r
-          base   = readRegister (registers cpu) b
+          val = findFromReorderBuffer r regs (rob cpu)
+          base = findFromReorderBuffer b regs (rob cpu)
+        --   val    = readRegister (registers cpu) r
+        --   base   = readRegister (registers cpu) b
           offset = i 
       in  ((StoreIdx r b i, pc), Tuple (base + offset, val))
 execInstruction cpu (StoreBaseIdx r s1 s2, pc)
     = let regs   = registers cpu
-          val    = readRegister (registers cpu) r
-          base   = readRegister (registers cpu) s1
+          val = findFromReorderBuffer r regs (rob cpu)
+          base = findFromReorderBuffer s1 regs (rob cpu)
+        --   val    = readRegister (registers cpu) r
+        --   base   = readRegister (registers cpu) s1
           r_offset = readRegister (registers cpu) s2
       in  ((StoreBaseIdx r s1 s2, pc), Tuple (fromIntegral $ base + r_offset, val))
 -- ARITHMETIC
 execInstruction cpu (Add dest source_a source_b, pc)     
     = let regs = registers cpu
-          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          [source_a_val, source_b_val] = [findFromReorderBuffer source_a regs (rob cpu) , findFromReorderBuffer source_b regs (rob cpu) ] 
           val = source_a_val + source_b_val
       in  ((Add dest source_a source_b, pc), Const val)
 execInstruction cpu (AddI dest source i, pc)  
     = let regs = registers cpu
-          [dest_reg, source_reg] = map (readRegister regs) [dest, source] 
+          [dest_reg, source_reg] = [findFromReorderBuffer dest regs (rob cpu), findFromReorderBuffer source regs (rob cpu)] 
           val = i + source_reg
       in  ((AddI dest source i, pc), Const val)     
 execInstruction cpu (Sub dest source_a source_b, pc)     
     = let regs = registers cpu
-          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          [source_a_val, source_b_val] = [findFromReorderBuffer source_a regs (rob cpu), findFromReorderBuffer source_b regs (rob cpu)] 
           val = source_a_val - source_b_val
       in  ((Sub dest source_a source_b, pc), Const val)
 execInstruction cpu (SubI dest source i, pc)  
     = let regs = registers cpu
-          source_reg = readRegister regs source
+          source_reg = findFromReorderBuffer source regs (rob cpu)
           val = source_reg - i
       in  ((SubI dest source i, pc), Const val)         
 execInstruction cpu (Mult dest source_a source_b, pc)     
     = let regs = registers cpu
-          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          [source_a_val, source_b_val] =  [findFromReorderBuffer source_a regs (rob cpu), findFromReorderBuffer source_b regs (rob cpu)] 
           val = source_a_val * source_b_val
       in  ((Mult dest source_a source_b, pc), Const val)
 execInstruction cpu (Div dest source_a source_b, pc)     
     = let regs = registers cpu
-          [source_a_val, source_b_val] = map (readRegister regs) [source_a, source_b] 
+          [source_a_val, source_b_val] = [findFromReorderBuffer source_a regs (rob cpu), findFromReorderBuffer source_b regs (rob cpu)] 
           val = fromIntegral $  floor $ fromIntegral source_a_val / fromIntegral source_b_val
       in  ((Div dest source_a source_b, pc), Const val)    
 -- LOGIC
 execInstruction cpu (Lt dest source_a source_b, pc)     
     = let regs = registers cpu
-          val  = if (readRegister regs source_a) < (readRegister regs source_b) then 1 else 0
+          val  = if (findFromReorderBuffer source_a regs (rob cpu)) < (findFromReorderBuffer source_b regs (rob cpu)) then 1 else 0
       in  ((Lt dest source_a source_b, pc), Const val)
 execInstruction cpu (Eq dest source_a source_b, pc)     
     = let regs = registers cpu
-          val  = if (readRegister regs source_a) == (readRegister regs source_b) then 1 else 0
+          val  = if (findFromReorderBuffer source_a regs (rob cpu)) == (findFromReorderBuffer source_b regs (rob cpu)) then 1 else 0
       in  ((Eq dest source_a source_b, pc), Const val)
 execInstruction cpu (Or dest source_a source_b, pc)     
     = let regs = registers cpu
-          val  = (readRegister regs source_a) .|. (readRegister regs source_b) 
+          val  = (findFromReorderBuffer source_a regs (rob cpu)) .|. (findFromReorderBuffer source_b regs (rob cpu)) 
       in  ((Or dest source_a source_b, pc), Const val)
 execInstruction cpu (And dest source_a source_b, pc)     
     = let regs = registers cpu
-          val  = (readRegister regs source_a) .&. (readRegister regs source_b)
+          val  = (findFromReorderBuffer source_a regs (rob cpu)) .&. (findFromReorderBuffer source_b regs (rob cpu))
       in  ((And dest source_a source_b, pc), Const val)
 execInstruction cpu (Not dest source, pc)     
     = let regs = registers cpu
-          val  = if (readRegister regs source) == 0 then 1 else 0
+          val  = if (findFromReorderBuffer source regs (rob cpu)) == 0 then 1 else 0
       in  ((Not dest source, pc), Const val)
 -- Subroutines
 execInstruction cpu (Ret, pc)     

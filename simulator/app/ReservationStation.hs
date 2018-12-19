@@ -97,7 +97,7 @@ createRSEntry cpu  statuses   instructionAndPC  =
         maxCycle    = 1 + (maximum $ map (fst . snd) $ Map.toList (rs_entries $ rs_station cpu) ) :: Int
         higherPriorityEntries = map (snd . snd) $ filter (\(rsId, (cyc, ent)) -> cyc < maxCycle) $ sortBy (comparing (\(rsId, (cyc, ent)) -> cyc))  (Map.toList resentries)
         
-        (cpu', renamedInstruction) = (cpu, fst instructionAndPC) --  renameInstructionRegs instruction cpu --
+        (cpu', renamedInstruction) = trace ("Creating entry" ++ show instruction ++ " with cycle " ++ show maxCycle ++ "\n") $ (cpu, fst instructionAndPC) --  renameInstructionRegs instruction cpu --
         renamedInstructionAndPc =  instructionAndPC -- (renamedInstruction, snd instructionAndPC) --
     in              case renamedInstruction of 
                                     Add  d s1 s2 -> let 

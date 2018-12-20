@@ -20,6 +20,8 @@ type InstructionAndPc   = (Instruction, Int)
 
 type L1LRU                  = [(Int, Int)]
 type L2LRU                  = [(Int, Int)]
+type L1MRU                  = [(Int, Int)]
+type L2MRU                  = [(Int, Int)]
 type L1FIFO                 = Map.Map Int (Int, Int)
 type L2FIFO                 = Map.Map Int (Int, Int)
 
@@ -28,6 +30,9 @@ data L1 = L1Fifo {
           } 
           | L1Lru { 
             l1_lru :: L1LRU
+          }
+          | L1Mru {
+            l1_mru :: L1MRU  
           } deriving Show
 
 data L2 =  L2Fifo {
@@ -35,6 +40,9 @@ data L2 =  L2Fifo {
             } 
             | L2Lru { 
                 l2_lru :: L2LRU
+            } 
+            | L2Mru {
+                l2_mru :: L2MRU
             } deriving Show
 
 type Memory             = V.Vector Int
@@ -240,7 +248,7 @@ data BranchConfig = TwoBit | TwoLevel | Local | Always | Never deriving Show
 
 data CacheConfig  = NoCache | L1Cache | L1L2Cache deriving Show
 
-data CachePolicy  = Fifo | Lru deriving Show
+data CachePolicy  = Fifo | Lru | Mru deriving Show
 
 data Config             = Config { 
                             branch_config :: BranchConfig, 
@@ -338,6 +346,7 @@ parseConfig  branchmethod cacheconfig casepolicy robsize pipelinesize
                                                       "l1"       -> L1Cache
                                                       "l1l2"     -> L1L2Cache
                   cache_policy' = case casepolicy of "LRU" -> Lru 
+                                                     "MRU" -> Mru
                                                      "FIFO" -> Fifo
                   rob_size' = read robsize :: Int 
                   pipeline_size' = read pipelinesize :: Int
@@ -346,12 +355,13 @@ initL1 :: CachePolicy -> L1
 initL1 policy = case policy of 
     Fifo -> L1Fifo (Map.fromList [])
     Lru  -> L1Lru  ([])
+    Mru  -> L1Mru  ([])
 
 initL2 :: CachePolicy -> L2 
 initL2 policy = case policy of 
     Fifo -> L2Fifo (Map.fromList [])
     Lru  -> L2Lru  ([])
-
+    Mru  -> L2Mru  ([])
 
 initCPU :: [Instruction] -> String -> String -> String -> String -> String ->   CPU 
 initCPU instructions branchmethod cacheconfig cachepolicy robsize pipelinesize
@@ -672,7 +682,9 @@ getFromL1Cache addr cpu =
         Lru  -> case findItem (\(address, _) -> address == addr) (l1_lru $ l1_cache cpu) of 
                     Just value -> Just (snd value) 
                     Nothing -> Nothing
-        
+        Mru  -> case findItem (\(address, _) -> address == addr) (l1_mru $ l1_cache cpu) of 
+                    Just value -> Just (snd value) 
+                    Nothing -> Nothing
 
 getFromL2Cache :: Int -> CPU -> Maybe Int 
 getFromL2Cache addr cpu = 
@@ -683,6 +695,9 @@ getFromL2Cache addr cpu =
         Lru  -> case findItem (\(address, _) -> address == addr) (l2_lru $ l2_cache cpu) of 
                     Just value -> Just (snd value) 
                     Nothing -> Nothing
+        Mru  -> case findItem (\(address, _) -> address == addr) (l2_mru $ l2_cache cpu) of 
+                    Just value -> Just (snd value) 
+                    Nothing -> Nothing
         
 
 insertL1Cache  :: Int -> Int -> CPU -> CPU 
@@ -690,12 +705,38 @@ insertL1Cache addr val cpu =
     case (cache_policy $ config cpu) of 
         Fifo -> insertL1CacheFIFO addr val cpu 
         Lru  -> insertL1CacheLRU addr val cpu 
+        Mru  -> insertL1CacheMRU addr val cpu 
 
 insertL2Cache  :: Int -> Int -> CPU -> CPU 
 insertL2Cache addr val cpu = 
     case (cache_policy $ config cpu) of 
         Fifo -> insertL2CacheFIFO addr val cpu 
         Lru  -> insertL2CacheLRU addr val cpu 
+        Mru  -> insertL2CacheMRU addr val cpu 
+
+
+insertL1CacheMRU :: Int -> Int -> CPU -> CPU 
+insertL1CacheMRU addr val cpu = if length l1' >= 8
+                             then let l1''  = [(addr, val)] ++ tailSafe l1' 
+                                      cpu'  = insertL2CacheMRU (fst $ head l1) (snd $ head l1) cpu
+                                      cpu'' = cpu' {l1_cache = L1Mru l1''}
+                                  in  cpu'' 
+                             else let l1'' = [(addr, val)] ++ (l1') 
+                                  in cpu {l1_cache = L1Mru l1''}
+                             where l1 = l1_mru $ l1_cache cpu
+                                   l1' = if addr `elem` (map fst l1) then removeUsing (\(address, value) -> address == addr) l1 else l1
+
+
+insertL2CacheMRU :: Int -> Int -> CPU -> CPU
+insertL2CacheMRU addr val cpu = if length l2' >= 16
+                             then let l2''   =  [(addr, val)] ++ tailSafe l2' 
+                                      cpu' = cpu {l2_cache = L2Mru l2''}
+                                  in  cpu' {d_memory = writeMemoryI cpu'  (snd $ head l2) (fst $ head l2)} 
+                             else let l2'' = [(addr, val)] ++ l2'
+                                  in cpu {l2_cache = L2Mru l2''}
+                             where l2 = l2_mru $ l2_cache cpu
+                                   l2' = if addr `elem` (map fst l2) then removeUsing (\(address, value) -> address == addr) l2 else l2
+
 
 insertL1CacheLRU :: Int -> Int -> CPU -> CPU 
 insertL1CacheLRU addr val cpu = if length l1' >= 8
@@ -774,19 +815,25 @@ writeCacheToMem cpu =
                           l2' = l2_lru $ l2_cache cpu
                           f = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu)
                           g = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ))
+        Mru  -> g (f l1') (l2')
+                    where l1' = l1_mru $ l1_cache cpu
+                          l2' = l2_mru $ l2_cache cpu
+                          f = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu)
+                          g = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ))
 
 isInL1Cache :: CPU -> Int -> Bool 
 isInL1Cache cpu addr = 
     case cache_policy (config cpu) of 
         Fifo -> Map.member addr (l1_fifo $ l1_cache cpu)
         Lru  -> addr `elem` (map fst $ l1_lru $ l1_cache cpu)
-
+        Mru  -> addr `elem` (map fst $ l1_mru $ l1_cache cpu)
 
 isInL2Cache :: CPU -> Int -> Bool 
 isInL2Cache cpu addr = 
     case cache_policy (config cpu) of 
         Fifo -> Map.member addr (l2_fifo $ l2_cache cpu)
         Lru  -> addr `elem` (map fst $ l2_lru $ l2_cache cpu)
+        Mru  -> addr `elem` (map fst $ l2_mru $ l2_cache cpu)
 
 removeItem :: Eq a => a -> [a] -> [a]                          
 removeItem _ []                 = []

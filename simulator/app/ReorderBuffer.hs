@@ -182,6 +182,21 @@ loadAddress cpu addr value d =
 
                         Just (address, l1_val) ->  let registers' =  writeRegister (registers cpu) d l1_val 
                                                    in (cpu {registers = registers'}) 
+        Mru  -> let l1' = l1_mru (l1_cache cpu)
+                    l2' = l2_mru (l2_cache cpu)
+                in case find (\(address, val) -> address == addr) l1' of 
+                        Nothing ->  case find (\(address, val) -> address == addr) l2' of 
+                                            Nothing ->  let registers' = writeRegister (registers cpu) d value  
+                                                            cpu' = insertL1Cache addr value cpu
+                                                            -- cpu_'' = insertL2Cache addr value cpu_'
+                                                        in  (cpu' {registers = registers'}) 
+                                            Just (address, l2_val) ->   let registers' = writeRegister (registers cpu) d l2_val  
+                                                                            cpu' = insertL1Cache addr l2_val cpu
+                                                                            l2'' = L2Mru $ removeItem (address, l2_val) (l2_mru $ l2_cache cpu') 
+                                                                        in  (cpu' {l2_cache = l2'', registers = registers'}) 
+
+                        Just (address, l1_val) ->  let registers' =  writeRegister (registers cpu) d l1_val 
+                                                   in (cpu {registers = registers'}) 
 
 
 
@@ -203,6 +218,15 @@ storeAddress cpu addr value =
                             then cpu { l1_cache = L1Lru $ (removeUsing (\(address, val) -> address == addr) l1') ++ [(addr, value)] }
                             else if (addr) `elem` (map fst l2')
                                  then  cpu { l2_cache = L2Lru $ (removeUsing (\(address, val) -> address == addr) l2') ++ [(addr, value)] }
+                                 else cpu { d_memory = writeMemoryI cpu value addr} 
+
+                in  (cpu_')
+        Mru ->  let l1' = l1_mru (l1_cache cpu)
+                    l2' = l2_mru (l2_cache cpu)
+                    cpu_' = if (addr) `elem` (map fst l1')
+                            then cpu { l1_cache = L1Mru $ (removeUsing (\(address, val) -> address == addr) l1') ++ [(addr, value)] }
+                            else if (addr) `elem` (map fst l2')
+                                 then  cpu { l2_cache = L2Mru $ (removeUsing (\(address, val) -> address == addr) l2') ++ [(addr, value)] }
                                  else cpu { d_memory = writeMemoryI cpu value addr} 
 
                 in  (cpu_')

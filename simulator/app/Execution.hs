@@ -105,11 +105,13 @@ execInstruction cpu (LoadIdx d s i, pc)
           offset = i 
           addr   = (fromIntegral $ base + offset)
           loadedWord = (d_memory cpu) V.! addr
-          loadedWord' = case getFromL1Cache addr cpu of 
-                                Nothing ->  case getFromL2Cache addr cpu of 
-                                                    Nothing ->  loadedWord
-                                                    Just (l2_val) ->  l2_val
-                                Just (l1_val) ->  l1_val
+          loadedWord' = case (cache_config (config cpu)) of 
+                                NoCache -> loadedWord
+                                _ -> case getFromL1Cache addr cpu of 
+                                            Nothing ->  case getFromL2Cache addr cpu of 
+                                                                Nothing ->  loadedWord
+                                                                Just (l2_val) ->  l2_val
+                                            Just (l1_val) ->  l1_val
       in  ((LoadIdx d s i, pc), Tuple (addr, loadedWord'))
 execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
@@ -119,11 +121,13 @@ execInstruction cpu (LoadBaseIdx d s1 s2, pc)
           r_offset = findFromReorderBuffer s2 regs (rob cpu)
           addr   = (fromIntegral $ base + r_offset)
           loadedWord = (d_memory cpu) V.! addr
-          loadedWord' = case getFromL1Cache addr cpu  of 
-                                Nothing ->  case getFromL2Cache addr cpu of 
-                                                    Nothing ->  loadedWord
-                                                    Just (l2_val) ->  l2_val
-                                Just (l1_val) ->  l1_val
+          loadedWord' =  case (cache_config (config cpu)) of 
+                                NoCache -> loadedWord 
+                                _ -> case getFromL1Cache addr cpu  of 
+                                            Nothing ->  case getFromL2Cache addr cpu of 
+                                                                Nothing ->  loadedWord
+                                                                Just (l2_val) ->  l2_val
+                                            Just (l1_val) ->  l1_val
       in  ((LoadBaseIdx d s1 s2, pc), Tuple (addr, loadedWord'))    
 -- STORE
 execInstruction cpu (StoreIdx r b i, pc)

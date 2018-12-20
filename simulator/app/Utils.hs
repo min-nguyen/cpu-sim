@@ -718,7 +718,9 @@ insertL2Cache addr val cpu =
 insertL1CacheMRU :: Int -> Int -> CPU -> CPU 
 insertL1CacheMRU addr val cpu = if length l1' >= 8
                              then let l1''  = [(addr, val)] ++ tailSafe l1' 
-                                      cpu'  = insertL2CacheMRU (fst $ head l1) (snd $ head l1) cpu
+                                      cpu'  =  case cache_config (config cpu) of 
+                                                    L1Cache ->  cpu {d_memory = writeMemoryI cpu (snd $ head l1) (fst $ head l1) } 
+                                                    L1L2Cache -> insertL2CacheMRU (fst $ head l1) (snd $ head l1) cpu
                                       cpu'' = cpu' {l1_cache = L1Mru l1''}
                                   in  cpu'' 
                              else let l1'' = [(addr, val)] ++ (l1') 
@@ -741,7 +743,9 @@ insertL2CacheMRU addr val cpu = if length l2' >= 16
 insertL1CacheLRU :: Int -> Int -> CPU -> CPU 
 insertL1CacheLRU addr val cpu = if length l1' >= 8
                              then let l1''   = tailSafe l1' ++ [(addr, val)]
-                                      cpu'  = insertL2CacheLRU (fst $ head l1) (snd $ head l1) cpu
+                                      cpu'  =  case cache_config (config cpu) of 
+                                                    L1Cache ->  cpu {d_memory = writeMemoryI cpu (snd $ head l1) (fst $ head l1) } 
+                                                    L1L2Cache -> insertL2CacheLRU (fst $ head l1) (snd $ head l1) cpu
                                       cpu'' = cpu' {l1_cache = L1Lru l1''}
                                   in  cpu'' 
                              else let l1'' = (l1') ++ [(addr, val)]
@@ -764,7 +768,9 @@ insertL1CacheFIFO :: Int -> Int -> CPU -> CPU
 insertL1CacheFIFO addr val cpu = if Map.size l1 >= 8
                              then let l1'  = Map.delete (oldestAddressL1) l1 
                                       l1'' = Map.insert addr (earliestTimeL1 + 1, val) l1'
-                                      cpu'  = insertL2CacheFIFO oldestAddressL1 (snd $ snd oldestEntryL1) cpu
+                                      cpu'  = case cache_config (config cpu) of 
+                                                    L1Cache -> cpu {d_memory = writeMemoryI cpu (snd $ snd oldestEntryL1) oldestAddressL1 } 
+                                                    L1L2Cache -> insertL2CacheFIFO oldestAddressL1 (snd $ snd oldestEntryL1) cpu
                                       cpu'' = cpu' {l1_cache = L1Fifo l1''}
                                   in  cpu'' 
                              else let l1' = Map.insert addr (earliestTimeL1 + 1, val) l1
@@ -777,11 +783,6 @@ insertL1CacheFIFO addr val cpu = if Map.size l1 >= 8
                                    oldestTimeL1 = if (fst $ snd oldestEntryL1) == 100000 then 0 else (fst $ snd oldestEntryL1) 
                                    earliestTimeL1 = if (fst $ snd earliestEntryL1) == (-1) then 0 else (fst $ snd earliestEntryL1) 
                                    oldestAddressL1 = fst oldestEntryL1
-                                   l2 = l2_fifo $ l2_cache cpu 
-                                   oldestEntryL2    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
-                                                                if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
-                                   oldestTimeL2 = if (fst $ snd oldestEntryL2) == 100000 then 0 else (fst $ snd oldestEntryL2) 
-                                   oldestAddressL2 = fst oldestEntryL2
 
 
 

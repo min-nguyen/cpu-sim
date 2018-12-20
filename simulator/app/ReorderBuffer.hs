@@ -150,8 +150,50 @@ commitReorderBuffer entry reorderBuff cpu =
         cpu'' 
 
 
+
+
 loadAddress  :: CPU -> Int -> Int -> RegisterNum -> CPU
 loadAddress cpu addr value d = 
+    case cache_config (config cpu) of 
+        NoCache -> let registers' = writeRegister (registers cpu) d value  in  (cpu {registers = registers'}) 
+        L1Cache -> loadAddressL1Config  cpu addr value d
+        L1L2Cache -> loadAddressL1L2Config cpu addr value d
+
+loadAddressL1Config ::  CPU -> Int -> Int -> RegisterNum -> CPU
+loadAddressL1Config cpu addr value d =
+    case cache_policy (config cpu) of 
+        Fifo -> let l1' = l1_fifo (l1_cache cpu)
+                    
+                in case Map.lookup addr l1' of 
+                        Nothing ->  let registers' = writeRegister (registers cpu) d value  
+                                        cpu' = insertL1Cache addr value cpu
+                                                  
+                                    in  (cpu' {registers = registers'})
+                        Just (time, l1_val) ->  let registers' =  writeRegister (registers cpu) d l1_val 
+                                                in (cpu {registers = registers'})        
+        Lru  -> let l1' = l1_lru (l1_cache cpu)
+                   
+                in case find (\(address, val) -> address == addr) l1' of 
+                        Nothing ->  let registers' = writeRegister (registers cpu) d value  
+                                        cpu' = insertL1Cache addr value cpu
+                                    in  (cpu' {registers = registers'}) 
+
+                        Just (address, l1_val) ->  let registers' =  writeRegister (registers cpu) d l1_val 
+                                                       cpu' = insertL1Cache addr value cpu
+                                                   in (cpu' {registers = registers'}) 
+        Mru  -> let l1' = l1_mru (l1_cache cpu)
+                in case find (\(address, val) -> address == addr) l1' of 
+                        Nothing ->  let registers' = writeRegister (registers cpu) d value  
+                                        cpu' = insertL1Cache addr value cpu
+                                    in  (cpu' {registers = registers'}) 
+                                     
+                        Just (address, l1_val) ->  let registers' =  writeRegister (registers cpu) d l1_val 
+                                                       cpu' = insertL1Cache addr value cpu
+                                                   in (cpu' {registers = registers'}) 
+
+
+loadAddressL1L2Config ::  CPU -> Int -> Int -> RegisterNum -> CPU
+loadAddressL1L2Config cpu addr value d =
     case cache_policy (config cpu) of 
         Fifo -> let l1' = l1_fifo (l1_cache cpu)
                     l2' = l2_fifo (l2_cache cpu)
@@ -201,7 +243,35 @@ loadAddress cpu addr value d =
 
 
 storeAddress :: CPU -> Int -> Int -> CPU 
-storeAddress cpu addr value =
+storeAddress cpu addr value = 
+    case cache_config (config cpu) of 
+        NoCache -> cpu {d_memory = writeMemoryI cpu value addr} 
+        L1Cache -> storeAddressL1Config  cpu addr value 
+        L1L2Cache -> storeAddressL1L2Config cpu addr value 
+
+storeAddressL1Config :: CPU -> Int -> Int -> CPU 
+storeAddressL1Config cpu addr value =
+    case cache_policy (config cpu) of 
+        Fifo -> let l1' = l1_fifo (l1_cache cpu)
+                    cpu_' = if Map.member (addr) l1'
+                            then cpu { l1_cache = L1Fifo $ Map.adjust (\(time, val) -> (time, value)) addr l1' } 
+                            else cpu {d_memory = writeMemoryI cpu value addr} 
+
+                in  (cpu_')
+        Lru ->  let l1' = l1_lru (l1_cache cpu)
+                    cpu_' = if (addr) `elem` (map fst l1')
+                            then cpu { l1_cache = L1Lru $ (removeUsing (\(address, val) -> address == addr) l1') ++ [(addr, value)] }
+                            else cpu { d_memory = writeMemoryI cpu value addr} 
+
+                in  (cpu_')
+        Mru ->  let l1' = l1_mru (l1_cache cpu)
+                    cpu_' = if (addr) `elem` (map fst l1')
+                            then cpu { l1_cache = L1Mru $ [(addr, value)] ++ (removeUsing (\(address, val) -> address == addr) l1')}
+                             else cpu { d_memory = writeMemoryI cpu value addr} 
+                in  (cpu_')                                       
+
+storeAddressL1L2Config :: CPU -> Int -> Int -> CPU 
+storeAddressL1L2Config cpu addr value =
     case cache_policy (config cpu) of 
         Fifo -> let l1' = l1_fifo (l1_cache cpu)
                     l2' = l2_fifo (l2_cache cpu)
@@ -224,9 +294,9 @@ storeAddress cpu addr value =
         Mru ->  let l1' = l1_mru (l1_cache cpu)
                     l2' = l2_mru (l2_cache cpu)
                     cpu_' = if (addr) `elem` (map fst l1')
-                            then cpu { l1_cache = L1Mru $ (removeUsing (\(address, val) -> address == addr) l1') ++ [(addr, value)] }
+                            then cpu { l1_cache = L1Mru $ [(addr, value)]  ++ (removeUsing (\(address, val) -> address == addr) l1')  }
                             else if (addr) `elem` (map fst l2')
-                                 then  cpu { l2_cache = L2Mru $ (removeUsing (\(address, val) -> address == addr) l2') ++ [(addr, value)] }
+                                 then  cpu { l2_cache = L2Mru $   [(addr, value)] ++ (removeUsing (\(address, val) -> address == addr) l2') }
                                  else cpu { d_memory = writeMemoryI cpu value addr} 
 
                 in  (cpu_')

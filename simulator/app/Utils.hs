@@ -4,6 +4,7 @@ module Utils where
 import Lib
 import Data.Word
 import Data.Bits
+import Data.List
 import Control.Applicative hiding (Const)
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as Map
@@ -17,8 +18,25 @@ type Instruction        = Assembly RegisterNum RegisterNum Int
 
 type InstructionAndPc   = (Instruction, Int)
 
-type L1                 = Map.Map Int (Int, Int)
-type L2                 = Map.Map Int (Int, Int)
+type L1LRU                  = [(Int, Int)]
+type L2LRU                  = [(Int, Int)]
+type L1FIFO                 = Map.Map Int (Int, Int)
+type L2FIFO                 = Map.Map Int (Int, Int)
+
+data L1 = L1Fifo {
+            l1_fifo :: L1FIFO
+          } 
+          | L1Lru { 
+            l1_lru :: L1LRU
+          } deriving Show
+
+data L2 =  L2Fifo {
+                l2_fifo :: L2FIFO
+            } 
+            | L2Lru { 
+                l2_lru :: L2LRU
+            } deriving Show
+
 type Memory             = V.Vector Int
 type IMemory            = V.Vector Instruction
 type Register           = Int
@@ -222,9 +240,12 @@ data BranchConfig = TwoBit | TwoLevel | Local | Always | Never deriving Show
 
 data CacheConfig  = NoCache | L1Cache | L1L2Cache deriving Show
 
+data CachePolicy  = Fifo | Lru deriving Show
+
 data Config             = Config { 
                             branch_config :: BranchConfig, 
                             cache_config :: CacheConfig,
+                            cache_policy :: CachePolicy,
                             rob_size  :: Int,
                             pipeline_size :: Int
                         } deriving Show
@@ -307,26 +328,38 @@ initRegisters = Registers (fromIntegral 0) (fromIntegral 0) (fromIntegral 0) (fr
 initUnit :: UnitId -> Int -> Unit 
 initUnit unit_id unit_size = Unit unit_id 0 Nothing 0 0 V.empty unit_size
 
-parseConfig :: String -> String -> String -> String -> Config 
-parseConfig  branchmethod cacheconfig robsize pipelinesize 
-        = Config branch_method' cache_config' rob_size' pipeline_size'
+parseConfig :: String -> String -> String -> String -> String  -> Config 
+parseConfig  branchmethod cacheconfig casepolicy robsize pipelinesize 
+        = Config branch_method' cache_config' cache_policy' rob_size' pipeline_size'
             where branch_method' = case branchmethod of "two_bit"           -> TwoBit
                                                         "two_level"          -> TwoLevel 
                                                         "local"              -> Local 
                   cache_config' = case cacheconfig of "no_cache" -> NoCache
                                                       "l1"       -> L1Cache
                                                       "l1l2"     -> L1L2Cache
+                  cache_policy' = case casepolicy of "LRU" -> Lru 
+                                                     "FIFO" -> Fifo
                   rob_size' = read robsize :: Int 
                   pipeline_size' = read pipelinesize :: Int
 
+initL1 :: CachePolicy -> L1 
+initL1 policy = case policy of 
+    Fifo -> L1Fifo (Map.fromList [])
+    Lru  -> L1Lru  ([])
 
-initCPU :: [Instruction] -> String -> String -> String -> String ->   CPU 
-initCPU instructions branchmethod cacheconfig robsize pipelinesize
-                     = let config = parseConfig branchmethod cacheconfig robsize pipelinesize
+initL2 :: CachePolicy -> L2 
+initL2 policy = case policy of 
+    Fifo -> L2Fifo (Map.fromList [])
+    Lru  -> L2Lru  ([])
+
+
+initCPU :: [Instruction] -> String -> String -> String -> String -> String ->   CPU 
+initCPU instructions branchmethod cacheconfig cachepolicy robsize pipelinesize
+                     = let config = parseConfig branchmethod cacheconfig cachepolicy robsize pipelinesize
                            i_mem = V.fromList instructions 
                            d_mem = V.replicate 200 (fromIntegral 0)
-                           l1 = Map.fromList []
-                           l2 = Map.fromList []
+                           l1 = initL1 (cache_policy config)
+                           l2 = initL2 (cache_policy config)
                            rs_station = initReservationStation
                            reorderBuff = initReorderBuffer (rob_size config)
                            registers = initRegisters
@@ -629,16 +662,73 @@ findFromReorderBuffer regnum registers reorderBuff =
                                                                                                                     Tuple (a, b) -> b 
                                                                                                             else latest_val) (readRegister registers regnum ) (rob_buffer reorderBuff)
 
-insertL1Cache :: Int -> Int -> CPU -> CPU
-insertL1Cache addr val cpu = if Map.size l1 >= 8
+
+getFromL1Cache :: Int -> CPU -> Maybe Int 
+getFromL1Cache addr cpu = 
+    case (cache_policy $ config cpu) of 
+        Fifo -> case Map.lookup addr (l1_fifo $ l1_cache cpu) of 
+                    Just (time, value) -> Just (value )
+                    Nothing -> Nothing
+        Lru  -> case findItem (\(address, _) -> address == addr) (l1_lru $ l1_cache cpu) of 
+                    Just value -> Just (snd value) 
+                    Nothing -> Nothing
+        
+
+getFromL2Cache :: Int -> CPU -> Maybe Int 
+getFromL2Cache addr cpu = 
+    case (cache_policy $ config cpu) of 
+        Fifo -> case Map.lookup addr (l2_fifo $ l2_cache cpu) of 
+                    Just (time, value) -> Just (value )
+                    Nothing -> Nothing
+        Lru  -> case findItem (\(address, _) -> address == addr) (l2_lru $ l2_cache cpu) of 
+                    Just value -> Just (snd value) 
+                    Nothing -> Nothing
+        
+
+insertL1Cache  :: Int -> Int -> CPU -> CPU 
+insertL1Cache addr val cpu = 
+    case (cache_policy $ config cpu) of 
+        Fifo -> insertL1CacheFIFO addr val cpu 
+        Lru  -> insertL1CacheLRU addr val cpu 
+
+insertL2Cache  :: Int -> Int -> CPU -> CPU 
+insertL2Cache addr val cpu = 
+    case (cache_policy $ config cpu) of 
+        Fifo -> insertL2CacheFIFO addr val cpu 
+        Lru  -> insertL2CacheLRU addr val cpu 
+
+insertL1CacheLRU :: Int -> Int -> CPU -> CPU 
+insertL1CacheLRU addr val cpu = if length l1' >= 8
+                             then let l1''   = tailSafe l1' ++ [(addr, val)]
+                                      cpu'  = insertL2CacheLRU (fst $ head l1) (snd $ head l1) cpu
+                                      cpu'' = cpu' {l1_cache = L1Lru l1''}
+                                  in  cpu'' 
+                             else let l1'' = (l1') ++ [(addr, val)]
+                                  in cpu {l1_cache = L1Lru l1''}
+                             where l1 = l1_lru $ l1_cache cpu
+                                   l1' = if addr `elem` (map fst l1) then removeUsing (\(address, value) -> address == addr) l1 else l1
+
+
+insertL2CacheLRU :: Int -> Int -> CPU -> CPU
+insertL2CacheLRU addr val cpu = if length l2' >= 16
+                             then let l2''   = tailSafe l2' ++ [(addr, val)]
+                                      cpu' = cpu {l2_cache = L2Lru l2''}
+                                  in  cpu' {d_memory = writeMemoryI cpu'  (snd $ head l2) (fst $ head l2)} 
+                             else let l2'' =  l2' ++ [(addr, val)]
+                                  in cpu {l2_cache = L2Lru l2''}
+                             where l2 = l2_lru $ l2_cache cpu
+                                   l2' = if addr `elem` (map fst l2) then removeUsing (\(address, value) -> address == addr) l2 else l2
+
+insertL1CacheFIFO :: Int -> Int -> CPU -> CPU
+insertL1CacheFIFO addr val cpu = if Map.size l1 >= 8
                              then let l1'  = Map.delete (oldestAddressL1) l1 
                                       l1'' = Map.insert addr (earliestTimeL1 + 1, val) l1'
-                                      cpu'  = insertL2Cache oldestAddressL1 (snd $ snd oldestEntryL1) cpu
-                                      cpu'' = cpu' {l1_cache = l1''}
+                                      cpu'  = insertL2CacheFIFO oldestAddressL1 (snd $ snd oldestEntryL1) cpu
+                                      cpu'' = cpu' {l1_cache = L1Fifo l1''}
                                   in  cpu'' 
                              else let l1' = Map.insert addr (earliestTimeL1 + 1, val) l1
-                                  in cpu {l1_cache = l1'}
-                             where l1 = l1_cache cpu
+                                  in cpu {l1_cache = L1Fifo l1'}
+                             where l1 = l1_fifo $ l1_cache cpu
                                    oldestEntryL1    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
                                                                 if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l1)
                                    earliestEntryL1 =  foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
@@ -646,7 +736,7 @@ insertL1Cache addr val cpu = if Map.size l1 >= 8
                                    oldestTimeL1 = if (fst $ snd oldestEntryL1) == 100000 then 0 else (fst $ snd oldestEntryL1) 
                                    earliestTimeL1 = if (fst $ snd earliestEntryL1) == (-1) then 0 else (fst $ snd earliestEntryL1) 
                                    oldestAddressL1 = fst oldestEntryL1
-                                   l2 = l2_cache cpu 
+                                   l2 = l2_fifo $ l2_cache cpu 
                                    oldestEntryL2    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
                                                                 if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
                                    oldestTimeL2 = if (fst $ snd oldestEntryL2) == 100000 then 0 else (fst $ snd oldestEntryL2) 
@@ -654,15 +744,15 @@ insertL1Cache addr val cpu = if Map.size l1 >= 8
 
 
 
-insertL2Cache :: Int -> Int -> CPU -> CPU
-insertL2Cache addr val cpu = if Map.size l2 >= 16
+insertL2CacheFIFO :: Int -> Int -> CPU -> CPU
+insertL2CacheFIFO addr val cpu = if Map.size l2 >= 16
                              then let l2'  = Map.delete (oldestAddress) l2
                                       l2'' = Map.insert addr (earliestTime + 1, val) l2' 
-                                      cpu' = cpu {l2_cache = l2''}
+                                      cpu' = cpu {l2_cache = L2Fifo l2''}
                                   in  cpu' {d_memory = writeMemoryI cpu' (snd $ snd oldestEntry) (fst oldestEntry)} 
                              else let l2' = Map.insert addr (earliestTime + 1, val) l2
-                                  in cpu {l2_cache = l2'}
-                             where l2 = l2_cache cpu
+                                  in cpu {l2_cache = L2Fifo l2'}
+                             where l2 = l2_fifo $ l2_cache cpu
                                    oldestEntry    = foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
                                                                 if time1 < time2 then (address1, (time1, value1)) else (address2, (time2, value2)) ) (0, (100000, 0)) (Map.toList l2)
                                    earliestEntry =  foldr (\(address1, (time1, value1)) (address2, (time2, value2)) -> 
@@ -672,8 +762,54 @@ insertL2Cache addr val cpu = if Map.size l2 >= 16
                                    oldestAddress = fst oldestEntry
 
 writeCacheToMem :: CPU -> CPU 
-writeCacheToMem cpu = g (f $ Map.toList l1) (Map.toList l2)
-                    where l1 = l1_cache cpu
-                          l2 = l2_cache cpu
+writeCacheToMem cpu =
+    case cache_policy (config cpu) of 
+        Fifo ->  g (f $ Map.toList l1') (Map.toList l2')
+                    where l1' = l1_fifo $ l1_cache cpu
+                          l2' = l2_fifo $ l2_cache cpu
                           f = (foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu)
                           g = (foldr (\(addr, (time, val)) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ))
+        Lru  -> g (f l1') (l2')
+                    where l1' = l1_lru $ l1_cache cpu
+                          l2' = l2_lru $ l2_cache cpu
+                          f = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ) cpu)
+                          g = (foldr (\(addr, val) cpu' -> cpu' { d_memory = writeMemoryI  cpu' val addr} ))
+
+isInL1Cache :: CPU -> Int -> Bool 
+isInL1Cache cpu addr = 
+    case cache_policy (config cpu) of 
+        Fifo -> Map.member addr (l1_fifo $ l1_cache cpu)
+        Lru  -> addr `elem` (map fst $ l1_lru $ l1_cache cpu)
+
+
+isInL2Cache :: CPU -> Int -> Bool 
+isInL2Cache cpu addr = 
+    case cache_policy (config cpu) of 
+        Fifo -> Map.member addr (l2_fifo $ l2_cache cpu)
+        Lru  -> addr `elem` (map fst $ l2_lru $ l2_cache cpu)
+
+removeItem :: Eq a => a -> [a] -> [a]                          
+removeItem _ []                 = []
+removeItem x (y:ys) | x == y    = removeItem x ys
+                    | otherwise = y : removeItem x ys
+
+removeUsing :: Eq a => (a -> Bool) -> [a] -> [a]                          
+removeUsing _ []                 = []
+removeUsing f (y:ys) | f y       = ys
+                     | otherwise = y : removeUsing f ys
+
+
+findItem :: Eq a => (a -> Bool) -> [a] -> Maybe a                         
+findItem _ []                 = Nothing
+findItem f (y:ys) | f y       = Just y
+                  | otherwise = findItem f ys
+
+
+replaceUsing :: Eq a =>  (a -> Bool) -> a -> [a] -> [a]
+replaceUsing f x [] = []
+replaceUsing f x (y:ys) | f y    = x : ys
+                        | otherwise = y : replaceUsing f x ys
+
+tailSafe :: [a] -> [a]
+tailSafe [] = []
+tailSafe (x:xs) = xs

@@ -33,7 +33,7 @@ updateExecUnits cpu =
                                       then
                                         let instrct = fst instructionAndPc
 
-                                            robEntry = euToROB $ execInstruction cpuArg instructionAndPc
+                                            robEntry  = euToROB $ execInstruction cpuArg instructionAndPc
                                             rsId      = rs_id unitArg  
                                             rsCycle   = (rs_cycle unitArg)
                                             cpu'      = cpuArg {rob = (insertReorderBuffer rsCycle robEntry (rob cpuArg))}
@@ -105,11 +105,11 @@ execInstruction cpu (LoadIdx d s i, pc)
           offset = i 
           addr   = (fromIntegral $ base + offset)
           loadedWord = (d_memory cpu) V.! addr
-          loadedWord' = case Map.lookup addr (l1_cache cpu) of 
-                                Nothing ->  case Map.lookup addr (l2_cache cpu) of 
+          loadedWord' = case getFromL1Cache addr cpu of 
+                                Nothing ->  case getFromL2Cache addr cpu of 
                                                     Nothing ->  loadedWord
-                                                    Just (time, l2_val) ->  l2_val
-                                Just (time, l1_val) ->  l1_val
+                                                    Just (l2_val) ->  l2_val
+                                Just (l1_val) ->  l1_val
       in  ((LoadIdx d s i, pc), Tuple (addr, loadedWord'))
 execInstruction cpu (LoadBaseIdx d s1 s2, pc)
     = let regs   = registers cpu
@@ -119,11 +119,11 @@ execInstruction cpu (LoadBaseIdx d s1 s2, pc)
           r_offset = findFromReorderBuffer s2 regs (rob cpu)
           addr   = (fromIntegral $ base + r_offset)
           loadedWord = (d_memory cpu) V.! addr
-          loadedWord' = case Map.lookup addr (l1_cache cpu) of 
-                                Nothing ->  case Map.lookup addr (l2_cache cpu) of 
+          loadedWord' = case getFromL1Cache addr cpu  of 
+                                Nothing ->  case getFromL2Cache addr cpu of 
                                                     Nothing ->  loadedWord
-                                                    Just (time, l2_val) ->  l2_val
-                                Just (time, l1_val) ->  l1_val
+                                                    Just (l2_val) ->  l2_val
+                                Just (l1_val) ->  l1_val
       in  ((LoadBaseIdx d s1 s2, pc), Tuple (addr, loadedWord'))    
 -- STORE
 execInstruction cpu (StoreIdx r b i, pc)

@@ -30,10 +30,10 @@ updateCPU cpu i =
         else (cpu5, i)
 
 
-executeProgram :: [Instruction] -> String -> String -> String -> String -> IO Double 
-executeProgram instructions  branch_method cache_config rob_size pipeline_size = do 
+executeProgram :: [Instruction] -> String -> String -> String -> String -> String -> IO Double 
+executeProgram instructions  branch_method cache_config cache_policy rob_size pipeline_size = do 
 
-    let cpu = initCPU instructions  branch_method cache_config rob_size pipeline_size
+    let cpu = initCPU instructions  branch_method cache_config cache_policy rob_size pipeline_size
     start <- getCPUTime
     let (cpu', count) = updateCPU cpu 0
     print (  cpu')
@@ -43,11 +43,11 @@ executeProgram instructions  branch_method cache_config rob_size pipeline_size =
 
 main :: IO ()
 main = do 
-    [filename, branch_method, cache_config, rob_size, pipeline_size] <- getArgs
+    [filename, branch_method, cache_config, cache_policy, rob_size, pipeline_size] <- getArgs
     print filename
     instructions <- parseFile ( filename)
     print instructions
-    time1 <- executeProgram instructions branch_method cache_config rob_size pipeline_size
+    time1 <- executeProgram instructions branch_method cache_config cache_policy rob_size pipeline_size
     -- time2 <- executeProgram instructions
     -- time3 <- executeProgram instructions
     -- time4 <- executeProgram instructions

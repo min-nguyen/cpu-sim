@@ -480,13 +480,13 @@ issueInstruction cpu rs_entry rsId rsCycle
                                                                         unit  = memUnit units
                                                                         cycs  = case instrct of LoadIdx s1 s2 i ->  let  base   = readRegister (registers cpu) s2
                                                                                                                          offset = i 
-                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 
-                                                                                                                         else if Map.member (base + i) (l2_cache cpu) then 4
+                                                                                                                    in   if isInL1Cache cpu (base + i) then 2 
+                                                                                                                         else if isInL2Cache cpu (base + i) then 4
                                                                                                                               else 5
                                                                                                 StoreIdx s1 s2 i -> let  base   = readRegister (registers cpu) s2
                                                                                                                          offset = i 
-                                                                                                                    in   if Map.member (base + i) (l1_cache cpu) then 2 
-                                                                                                                         else if Map.member (base + i) (l2_cache cpu) then 3
+                                                                                                                    in   if isInL1Cache cpu (base + i) then 2 
+                                                                                                                         else if isInL2Cache cpu (base + i) then 3
                                                                                                                               else 4
                                                                                                 _                -> 4
 

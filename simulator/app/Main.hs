@@ -36,7 +36,7 @@ executeProgram instructions  branch_method cache_config cache_policy rob_size pi
     let cpu = initCPU instructions  branch_method cache_config cache_policy rob_size pipeline_size
     start <- getCPUTime
     let (cpu', count) = updateCPU cpu 0
-    print (  cpu')
+    print (stats  cpu')
     end <- getCPUTime 
     let diff = (fromIntegral (end - start)) / (10^12)
     return diff        

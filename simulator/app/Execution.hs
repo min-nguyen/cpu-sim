@@ -54,7 +54,7 @@ updateExecUnits cpu =
                                                                             Branch_Unit -> cpu'' { executionUnits = (executionUnits cpu'') { branchUnit = unit' {cycles = (cycles unit') - 1 }} ,
                                                                                                 stats = (stats cpu) & branches_made %~ (+1)  } 
                                             
-                                        in trace (show cpu''' ++ "\n") $ cpu'''
+                                        in cpu'''
                                       else cpuArg
                             else  
                                 case unitId unitArg of  Int_Unit1 -> cpuArg { executionUnits = (executionUnits cpuArg) { intUnit1 = unitArg {cycles = (cycles unitArg) - 1 }}}  

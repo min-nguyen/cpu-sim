@@ -339,17 +339,29 @@ initUnit unit_id unit_size = Unit unit_id 0 Nothing 0 0 V.empty unit_size
 parseConfig :: String -> String -> String -> String -> String  -> Config 
 parseConfig  branchmethod cacheconfig casepolicy robsize pipelinesize 
         = Config branch_method' cache_config' cache_policy' rob_size' pipeline_size'
-            where branch_method' = case branchmethod of "two_bit"           -> TwoBit
+            where branch_method' = case branchmethod of 
+                                                        "two_bit"           -> TwoBit
                                                         "two_level"          -> TwoLevel 
                                                         "local"              -> Local 
+                                                        _ -> error errorMessage
                   cache_config' = case cacheconfig of "no_cache" -> NoCache
                                                       "l1"       -> L1Cache
                                                       "l1l2"     -> L1L2Cache
-                  cache_policy' = case casepolicy of "LRU" -> Lru 
-                                                     "MRU" -> Mru
-                                                     "FIFO" -> Fifo
+                                                      _ -> error errorMessage
+                  cache_policy' = case casepolicy of "lru" -> Lru 
+                                                     "mru" -> Mru
+                                                     "fifo" -> Fifo
+                                                     _ -> error errorMessage
                   rob_size' = read robsize :: Int 
                   pipeline_size' = read pipelinesize :: Int
+
+errorMessage = "Run: stack exec simulator-exe programs/<program> <prediction_method> <caches> <cache_policy> <rob_size> <pipeline_width>\n" ++
+                "Parameters:\n" ++ 
+                "prediction_method: always, never, two_bit, two_level, local\n" ++ 
+                "caches: no_cache, l1, l1l2\n" ++
+                "cache_policy: lru, mru, fifo\n" ++
+                "rob_size: Any integer > 1 \n" ++
+                "pipeline_width: Any integer > 0 \n"
 
 initL1 :: CachePolicy -> L1 
 initL1 policy = case policy of 

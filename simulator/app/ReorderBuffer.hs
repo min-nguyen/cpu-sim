@@ -146,7 +146,7 @@ commitReorderBuffer entry reorderBuff cpu =
                                                                                                     active = False}) , False)
                                                                             
 
-    in --trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") $ 
+    in trace ("ROB ENTRY COMMITED : " ++ show entry ++ "\n" ++ show cpu'' ++ "\n\n") $ 
         cpu'' 
 
 
